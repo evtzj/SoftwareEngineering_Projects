@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#244e41" />
+    <meta
+      name="description"
+      content="记录成长、收藏作品，也把小小的想法做成有用的工具。"
+    />
+    <title>成长自留地 · 把日子写成故事</title>
+    <link rel="icon" type="image/svg+xml" href="./assets/sprout.svg" />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">跳到主要内容</a>
+    <header class="site-header">
+      <div class="header-inner">
+        <a class="brand" href="#home" aria-label="成长自留地首页"
+          ><span class="brand-icon">✳</span
+          ><span>成长自留地<small>A LITTLE SPACE TO GROW</small></span></a
+        >
+        <nav aria-label="主导航">
+          <a href="#home" data-nav="home">首页</a
+          ><a href="#growth" data-nav="growth">成长足迹</a
+          ><a href="#works" data-nav="works">作品与成就</a
+          ><a href="#tools" data-nav="tools"
+            >工具箱 <span class="nav-dot"></span
+          ></a>
+        </nav>
+        <button class="button small outline" id="edit-profile">
+          <span aria-hidden="true">✎</span> 编辑主页
+        </button>
+      </div>
+    </header>
+    <main id="main"></main>
+    <footer class="site-footer">
+      <a class="brand footer-brand" href="#home"
+        ><span class="brand-icon">✳</span>成长自留地</a
+      ><span>每一个小小的脚印，都值得被记住。</span
+      ><span class="footer-note">软件工程课程设计 · 2026</span>
+    </footer>
+    <dialog id="editor-dialog">
+      <form id="editor-form">
+        <div class="dialog-heading">
+          <div>
+            <span class="eyebrow">MAKE IT YOURS</span>
+            <h2 id="dialog-title"></h2>
+          </div>
+          <button
+            class="icon-button"
+            type="button"
+            id="close-dialog"
+            aria-label="关闭"
+          >
+            ×
+          </button>
+        </div>
+        <div id="editor-fields"></div>
+        <p class="storage-note">保存到当前浏览器。建议使用同一地址打开主页。</p>
+        <div class="dialog-actions">
+          <button type="button" class="button outline" id="cancel-dialog">
+            取消</button
+          ><button class="button primary" type="submit">
+            保存修改 <span>↗</span>
+          </button>
+        </div>
+      </form>
+    </dialog>
+    <div id="toast" role="status" aria-live="polite"></div>
+    <div id="print-sheet"></div>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

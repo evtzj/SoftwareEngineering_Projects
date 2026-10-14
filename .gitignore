@@ -1,0 +1,7 @@
+.tools/
+node_modules/
+*.log
+test-results/
+playwright-report/
+*.m4a
+notes/
