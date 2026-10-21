@@ -83,7 +83,9 @@ test("C++ 多行 raw string 不把内容当注释", () => {
   );
 });
 test("文件扩展名识别", () => {
-  assert.equal(detectLanguage("SOURCE.CPP"), "c");
+  assert.equal(detectLanguage("SOURCE.CPP"), "cpp");
+  assert.equal(detectLanguage("main.c"), "c");
+  assert.equal(detectLanguage("Example.cs"), "csharp");
   assert.equal(detectLanguage("app.mjs"), "javascript");
   assert.equal(detectLanguage("photo.png"), undefined);
 });

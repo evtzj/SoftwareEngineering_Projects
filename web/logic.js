@@ -7,10 +7,12 @@ export const languages = {
   typescript: { label: "TypeScript", extensions: ["ts", "tsx"], family: "c" },
   python: { label: "Python", extensions: ["py"], family: "python" },
   c: {
-    label: "C / C++",
-    extensions: ["c", "h", "cpp", "hpp", "cc"],
+    label: "C",
+    extensions: ["c", "h"],
     family: "c",
   },
+  cpp: { label: "C++", extensions: ["cpp", "hpp", "cc", "cxx", "hxx", "hh"], family: "c" },
+  csharp: { label: "C#", extensions: ["cs"], family: "c" },
   java: { label: "Java", extensions: ["java"], family: "c" },
   css: { label: "CSS", extensions: ["css"], family: "css" },
   scss: { label: "SCSS", extensions: ["scss"], family: "c" },
@@ -143,7 +145,7 @@ export function countCode(text, language = "javascript") {
         hasComment = true;
         break;
       }
-      if (language === "c" && next.startsWith('R"')) {
+      if (["c", "cpp"].includes(language) && next.startsWith('R"')) {
         const raw = next.match(/^R"([^\s()\\]{0,16})\(/);
         if (raw) {
           rawEnd = ")" + raw[1] + '"';

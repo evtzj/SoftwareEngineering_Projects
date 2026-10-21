@@ -29,11 +29,15 @@ npm start
 ### 代码量统计
 
 - 支持选择文件、文件夹、拖放文件和粘贴代码。
-- 支持 JavaScript、TypeScript、Python、C / C++、Java、HTML、CSS、SCSS、JSON、SQL。
-- 分别统计代码行、注释行和空白行，显示语言分布与文件明细，支持导出 CSV。
+- 支持 JavaScript、TypeScript、Python、C、C++、Java、C#、HTML、CSS、SCSS、JSON、SQL。
+- 按课堂表格展示语言、源文件数、代码行数、空行数、注释行数、函数个数，以及函数长度的最大值、最小值、均值、中位数。
+- 函数长度排除空行与仅空格/制表符的行，保留签名、括号和注释行；提供函数名、起止行号，方便核对。
+- 导出 CSV 语言汇总、JSON 完整报告，或 Excel `.xlsx`（语言汇总、文件明细、函数明细、统计口径四张工作表）。
 - 文件在浏览器内读取，自动跳过依赖目录、Git 元数据和构建输出。
 
-统计按物理行计算：混合行归代码，纯注释行归注释，空白行单独计算，末尾换行不额外计一行。Python 三引号字符串按代码计。采用基础词法扫描，不展开宏或外部文件。
+行数分类按物理行计算：混合行归代码，纯注释行归注释，空白行单独计算，末尾换行不额外计一行。Python 三引号字符串按代码计。C/C++、Java、Python、C#、JS/TS 使用本地语法树识别函数及注释；其他语言保留基础行数统计。不展开宏或外部文件。语法不完整时会在文件明细提示，缺失的函数指标显示 `—`。
+
+点击“载入五语言示例项目”可以直接查看完整报告。[抽象划分、统计口径与实现流程](docs/代码统计设计.md)。
 
 ### 四则运算工作台
 
@@ -61,6 +65,11 @@ web/
   index.html              页面入口
   app.js                  页面交互、默认资料与浏览器存储
   logic.js                行数统计、出题与批改
+  code-analysis.js        语法树分析与函数长度
+  code-report.js          统计口径、语言汇总与 CSV
+  code-xlsx.js            Excel 导出
+  code-tool.js            代码统计界面
+  vendor/                 随网站分发的解析与导出资源
   style.css               样式、响应式布局和打印样式
   assets/                 网站图标
 server.mjs                本地静态服务
@@ -83,7 +92,7 @@ npm ci
 npm run test:browser
 ```
 
-测试覆盖代码统计、表达式求值、多步出题、一万题唯一性、分数和余数批改，以及工作台分页、资料保存、报告下载和手机布局。
+测试覆盖五语言函数识别、长度排除空行、跨文件汇总、CSV/JSON/XLSX 导出、表达式求值、多步出题、一万题唯一性、分数和余数批改，以及工作台分页、资料保存、报告下载和手机布局。
 
 ## 小组协作
 
@@ -95,4 +104,4 @@ npm run test:browser
 
 ![个人主页](preview/首页-首屏.png)
 
-[完整主页](preview/首页-桌面.png) · [手机主页](preview/首页-手机.png) · [代码统计](preview/代码统计.png) · [四则运算](preview/四则运算.png)
+[完整主页](preview/首页-桌面.png) · [手机主页](preview/首页-手机.png) · [代码统计报告](preview/code-report-desktop.png) · [代码统计手机界面](preview/code-report-mobile.png) · [四则运算](preview/四则运算.png)
