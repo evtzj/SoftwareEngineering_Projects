@@ -17,7 +17,7 @@ async function screenshot(page, path, fullPage = true) {
 test("主页：导航、编辑保存及桌面和手机排版", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  await page.goto("/");
+  await page.goto("/#home");
   await expect(
     page.getByRole("heading", { name: "你好，我是 小林。" }),
   ).toBeVisible();
@@ -46,7 +46,8 @@ test("主页：导航、编辑保存及桌面和手机排版", async ({ page }) 
   await page.getByRole("link", { name: "让想法留下形状" }).click();
   await expect(page).toHaveURL(/#works$/);
   await page.evaluate(() => localStorage.clear());
-  await page.goto("/");
+  await page.goto("/#home");
+  await page.reload();
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(
     page.getByRole("heading", { name: "你好，我是 小林。" }),
@@ -82,46 +83,4 @@ test("代码统计：示例、文件读取、报告导出", async ({ page }) => 
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth),
   ).toBeLessThanOrEqual(390);
-});
-
-test("练习：生成、批改、未答、错题重练和新练习", async ({ page }) => {
-  await page.goto("/#math");
-  await page.keyboard.press("Tab");
-  await page.getByRole("link", { name: "跳到主要内容" }).click();
-  await expect(page).toHaveURL(/#math$/);
-  await page.getByRole("button", { name: "生成我的练习" }).click();
-  await expect(page.locator("[data-answer]")).toHaveCount(10);
-  await page.locator('[data-answer="0"]').fill("999");
-  await page.getByRole("button", { name: "交卷批改" }).click();
-  await expect(page.locator(".grade-banner")).toContainText("未答 9 道");
-  await expect(page.locator(".question.incorrect")).toHaveCount(10);
-  await page.getByRole("button", { name: "只练错题" }).click();
-  await expect(page.locator(".worksheet-heading")).toContainText("错题重练");
-  const expressions = await page.locator(".expression").allTextContents();
-  for (let i = 0; i < expressions.length; i++) {
-    const match = expressions[i].match(/(\d+)\s*([+−×÷])\s*(\d+)/);
-    const a = Number(match[1]),
-      b = Number(match[3]);
-    const answer =
-      match[2] === "+"
-        ? a + b
-        : match[2] === "−"
-          ? a - b
-          : match[2] === "×"
-            ? a * b
-            : a / b;
-    await page.locator(`[data-answer="${i}"]`).fill(String(answer));
-  }
-  await page.getByRole("button", { name: "交卷批改" }).click();
-  await expect(page.locator(".grade-banner")).toContainText("全对啦");
-  await expect(page.locator(".grade-banner>strong")).toHaveText("100分");
-  await expect(page.locator(".history-row")).toHaveCount(2);
-  await page.getByRole("button", { name: "再练一组" }).click();
-  await expect(page.locator(".grade-banner")).toHaveCount(0);
-  await screenshot(page, "preview/四则运算.png");
-  await page.setViewportSize({ width: 390, height: 844 });
-  expect(
-    await page.evaluate(() => document.documentElement.scrollWidth),
-  ).toBeLessThanOrEqual(390);
-  await screenshot(page, "preview/四则运算-手机.png");
 });

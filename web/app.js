@@ -1,10 +1,5 @@
-import {
-  languages,
-  detectLanguage,
-  countCode,
-  generateQuestions,
-  gradeQuestions,
-} from "./logic.js";
+import { workshopView, bindWorkshop } from "./workshop.js";
+import { languages, detectLanguage, countCode } from "./logic.js";
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -109,20 +104,9 @@ function readStorage(key, fallback) {
   }
 }
 let profile = readStorage("growth-garden-profile", structuredClone(defaults));
-let history = readStorage("growth-garden-practice", []);
 let editor = null,
   codeRows = [],
   codeBusy = false;
-let math = {
-  count: 10,
-  max: 20,
-  operations: ["+", "-"],
-  questions: [],
-  answers: [],
-  grade: null,
-  started: null,
-  elapsed: null,
-};
 let toastTimer;
 function toast(message) {
   $("#toast").textContent = message;
@@ -351,163 +335,6 @@ function bindCode() {
   updateCodeResults();
 }
 
-function mathView() {
-  return `${toolHeader("02", "A LITTLE BETTER EVERY DAY", "四则运算练习", "今天也来一点小挑战，让进步看得见。", "math")}
-    <div class="math-layout"><aside class="panel math-settings"><div class="panel-title">${icon("math")}<h2>定制一份练习</h2></div><form id="math-settings"><fieldset><legend>01 <span>数字与结果范围</span></legend><div class="range-options">${[10, 20, 100].map((n) => `<label><input type="radio" name="max" value="${n}" ${math.max === n ? "checked" : ""}><span>${n}<small>以内</small></span></label>`).join("")}</div></fieldset><fieldset><legend>02 <span>选择运算</span></legend><div class="operator-options">${[
-      ["+", "＋", "加法"],
-      ["-", "−", "减法"],
-      ["*", "×", "乘法"],
-      ["/", "÷", "除法"],
-    ]
-      .map(
-        ([op, symbol, label]) =>
-          `<label><input type="checkbox" name="operation" value="${op}" ${math.operations.includes(op) ? "checked" : ""}><span><b>${symbol}</b>${label}</span></label>`,
-      )
-      .join(
-        "",
-      )}</div></fieldset><label class="count-label" for="question-count"><span>03 <b>题目数量</b></span><select id="question-count" name="count">${[5, 10, 20, 30].map((n) => `<option value="${n}" ${math.count === n ? "selected" : ""}>${n} 道题</option>`).join("")}</select></label><button class="button primary generate-button" type="submit">${icon("spark", 19)} ${math.questions.length ? "生成新练习" : "生成我的练习"} <span>↗</span></button></form><div class="math-tip"><span>✳</span><div><h3>一点点，就很好。</h3><p>减法不出现负数，除法可以整除。乘除法使用九九乘法表，数字和结果均在所选范围内。</p></div></div><div class="history-head"><h3>最近练习</h3>${history.length ? '<button class="text-link" id="clear-history">清空</button>' : ""}</div><div id="practice-history">${
-      history.length
-        ? history
-            .slice(0, 5)
-            .map(
-              (h) =>
-                `<div class="history-row"><div><span>${escape(h.date)}</span><small>${h.total} 道题 · ${h.max} 以内${h.retry ? " · 错题重练" : ""}</small></div><strong>${h.score}<small>分</small></strong></div>`,
-            )
-            .join("")
-        : '<p class="history-empty">第一份练习，从今天开始。</p>'
-    }</div></aside>
-    <section class="panel worksheet-panel" id="worksheet-panel">${worksheet()}</section></div><div class="explanation"><span>小提示</span><p>所有题目都不重复；已选择的运算会均匀出现。填写后点击“交卷批改”，留空的题目会计为未答。练习记录保存在当前浏览器。</p></div></div>`;
-}
-function worksheet() {
-  if (!math.questions.length)
-    return `<div class="math-empty"><div class="empty-math-art"><span>3</span><span>+</span><span>2</span><i>?</i><span class="math-art-star">✳</span></div><span class="eyebrow">A FRESH LITTLE CHALLENGE</span><h2>准备好，开动小脑筋。</h2><p>选择左侧的范围、运算和题量，<br>给自己生成一份刚刚好的练习。</p><div class="empty-steps"><span>① 定制练习</span><i>→</i><span>② 认真作答</span><i>→</i><span>③ 看见进步</span></div></div>`;
-  const grade = math.grade;
-  return `<div class="worksheet-heading"><div><span class="eyebrow">TODAY'S PRACTICE ${math.retry ? " / 错题重练" : ""}</span><h2>${math.retry ? "再来一次，一定可以。" : "一小步，也是进步。"}</h2></div><button class="icon-button" id="print-math" aria-label="打印练习">${icon("print", 22)}</button></div><div class="worksheet-meta"><span>${math.questions.length} 道题 · ${math.max} 以内</span><span id="answer-progress">已完成 ${math.answers.filter((v) => String(v ?? "").trim() !== "").length} / ${math.questions.length}</span></div><div class="progress-track"><i id="answer-progress-bar" style="width:${(math.answers.filter((v) => String(v ?? "").trim() !== "").length / math.questions.length) * 100}%"></i></div>
-    ${grade ? `<div class="grade-banner ${grade.score === 100 ? "perfect" : ""}"><div><span class="grade-icon">${grade.score === 100 ? "✳" : "✓"}</span><div><h3>${grade.score === 100 ? "全对啦，今天的你很棒！" : "每次练习，都是一次成长。"}</h3><p>答对 ${grade.correct} / ${grade.total} 道${grade.unanswered ? ` · 未答 ${grade.unanswered} 道` : ""} · 用时 ${math.elapsed} 秒</p></div></div><strong>${grade.score}<small>分</small></strong></div>` : ""}
-    <form id="answer-form"><div class="questions-grid">${math.questions
-      .map((q, i) => {
-        const row = grade?.rows[i];
-        return `<div class="question ${row ? (row.correct ? "correct" : "incorrect") : ""}"><label for="answer-${i}"><span class="question-number">${String(i + 1).padStart(2, "0")}</span><span class="expression">${q.expression} =</span></label><input type="text" inputmode="numeric" autocomplete="off" id="answer-${i}" data-answer="${i}" aria-label="第 ${i + 1} 题，${q.expression} 的答案" value="${escape(math.answers[i] ?? "")}" ${grade ? "readonly" : ""}><span class="answer-mark">${row ? (row.correct ? "✓" : "×") : ""}</span>${row && !row.correct ? `<small class="answer-correction">${row.answered ? "正确答案" : "未作答，答案"}：${q.answer}</small>` : ""}</div>`;
-      })
-      .join("")}</div>
-    <div class="worksheet-actions">${grade ? `<div><button class="button primary" type="button" id="next-practice">再练一组 ${icon("arrow", 17)}</button>${grade.correct < grade.total ? '<button class="button outline" type="button" id="retry-wrong">只练错题</button>' : ""}</div>` : `<span class="worksheet-encourage">仔细想一想，你可以的。</span><button class="button primary" type="submit">交卷批改 ${icon("check", 18)}</button>`}</div></form><div class="worksheet-download"><button class="text-link" id="download-math">${icon("download", 16)} 下载题目</button><label><input type="checkbox" id="include-answers"> 附带答案（下载 / 打印）</label></div>`;
-}
-function generateMath(settings) {
-  try {
-    const questions = generateQuestions(settings);
-    math = {
-      ...settings,
-      questions,
-      answers: [],
-      grade: null,
-      started: Date.now(),
-      elapsed: null,
-      retry: false,
-    };
-    renderMath();
-    toast("新练习已准备好，加油！");
-  } catch (error) {
-    toast(error.message);
-  }
-}
-function renderMath() {
-  $("#main").innerHTML = mathView();
-  bindMath();
-}
-function practiceSettings() {
-  const form = new FormData($("#math-settings"));
-  return {
-    count: Number(form.get("count")),
-    max: Number(form.get("max")),
-    operations: form.getAll("operation"),
-  };
-}
-function bindMath() {
-  $("#math-settings").onsubmit = (event) => {
-    event.preventDefault();
-    generateMath(practiceSettings());
-  };
-  $("#clear-history")?.addEventListener("click", () => {
-    history = [];
-    persist("growth-garden-practice", history);
-    renderMath();
-  });
-  $$("[data-answer]").forEach(
-    (input) =>
-      (input.oninput = () => {
-        math.answers[Number(input.dataset.answer)] = input.value;
-        const answered = math.answers.filter(
-          (v) => String(v ?? "").trim() !== "",
-        ).length;
-        $("#answer-progress").textContent =
-          `已完成 ${answered} / ${math.questions.length}`;
-        $("#answer-progress-bar").style.width =
-          (answered / math.questions.length) * 100 + "%";
-      }),
-  );
-  $("#answer-form")?.addEventListener("submit", (event) => {
-    event.preventDefault();
-    if (math.grade) return;
-    if (!math.answers.some((v) => String(v ?? "").trim() !== "")) {
-      toast("先试着回答一道题吧。");
-      $("#answer-0").focus();
-      return;
-    }
-    math.grade = gradeQuestions(math.questions, math.answers);
-    math.elapsed = Math.max(1, Math.round((Date.now() - math.started) / 1000));
-    history.unshift({
-      date: new Date().toLocaleDateString("zh-CN", {
-        month: "2-digit",
-        day: "2-digit",
-      }),
-      total: math.questions.length,
-      max: math.max,
-      score: math.grade.score,
-      retry: math.retry,
-    });
-    history = history.slice(0, 20);
-    persist("growth-garden-practice", history);
-    renderMath();
-  });
-  $("#next-practice")?.addEventListener("click", () =>
-    generateMath(practiceSettings()),
-  );
-  $("#retry-wrong")?.addEventListener("click", () => {
-    math.questions = math.grade.rows
-      .filter((q) => !q.correct)
-      .map(({ a, b, op, answer, expression }) => ({
-        a,
-        b,
-        op,
-        answer,
-        expression,
-      }));
-    math.answers = [];
-    math.grade = null;
-    math.started = Date.now();
-    math.elapsed = null;
-    math.retry = true;
-    renderMath();
-  });
-  $("#download-math")?.addEventListener("click", () => {
-    let text =
-      `四则运算练习 · ${math.max}以内\n姓名：____________ 日期：____________\n\n` +
-      math.questions
-        .map((q, i) => `${i + 1}. ${q.expression} = ______`)
-        .join("\n");
-    if ($("#include-answers").checked)
-      text +=
-        "\n\n参考答案\n" +
-        math.questions.map((q, i) => `${i + 1}. ${q.answer}`).join("\n");
-    download(text, "四则运算练习.txt");
-  });
-  $("#print-math")?.addEventListener("click", () => {
-    $("#print-sheet").innerHTML =
-      `<h1>四则运算练习</h1><p>姓名：________________　日期：________________</p><p>${math.max} 以内 · 共 ${math.questions.length} 题</p><div class="print-questions">${math.questions.map((q, i) => `<div>${i + 1}.　${q.expression} = ______</div>`).join("")}</div>${$("#include-answers").checked ? `<div class="print-answers"><h2>参考答案</h2><p>${math.questions.map((q, i) => `${i + 1}. ${q.answer}`).join("　 /　 ")}</p></div>` : ""}`;
-    window.print();
-  });
-}
-
 function openEditor(kind, id) {
   editor = { kind, id };
   const personal = kind === "profile";
@@ -628,20 +455,24 @@ function bindHome() {
 }
 let currentPage = null;
 function render(scroll = true) {
-  const route = location.hash.slice(1) || "home";
+  const route = location.hash.slice(1) || "math";
   const page = ["code", "math"].includes(route) ? route : "home";
   $$("[data-nav]").forEach((a) => {
-    const active = a.dataset.nav === (page === "home" ? route : "tools");
+    const active = a.dataset.nav === (page === "home" ? route : page);
     a.classList.toggle("active", active);
     if (active) a.setAttribute("aria-current", "page");
     else a.removeAttribute("aria-current");
   });
-  document.title = `${page === "code" ? "代码量统计" : page === "math" ? "四则运算练习" : "成长自留地"} · ${profile.name}`;
+  document.title = `${page === "code" ? "代码量统计" : page === "math" ? "四则运算练习" : "个人档案"} · 演算室`;
   if (page !== currentPage || !scroll) {
     $("#main").innerHTML =
-      page === "code" ? codeView() : page === "math" ? mathView() : homeView();
+      page === "code"
+        ? codeView()
+        : page === "math"
+          ? workshopView()
+          : homeView();
     if (page === "code") bindCode();
-    else if (page === "math") bindMath();
+    else if (page === "math") bindWorkshop();
     else bindHome();
     currentPage = page;
   }

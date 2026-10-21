@@ -36,7 +36,7 @@ http
   })
   .listen(port, "127.0.0.1", () => {
     const url = `http://127.0.0.1:${port}`;
-    console.log(`成长自留地已启动：${url}`);
+    console.log(`演算室已启动：${url}`);
     if (process.argv.includes("--open") && process.platform === "win32") {
       spawn("cmd", ["/c", "start", "", url], {
         windowsHide: true,

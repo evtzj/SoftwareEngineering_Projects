@@ -1,0 +1,841 @@
+:root {
+  --paper: #eeede9;
+  --ink: #242424;
+  --green: #bc422b;
+  --muted: #77736e;
+  --line: #d4d0c9;
+  --orange: #bc422b;
+  --serif: "Songti SC", SimSun, Georgia, serif;
+  --sans: "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+html {
+  scroll-padding-top: 90px;
+}
+body {
+  background: var(--paper);
+  color: var(--ink);
+}
+.site-header {
+  background: #eeede9;
+  border-bottom: 1px solid #bfbab2;
+  box-shadow: none;
+}
+.header-inner {
+  max-width: 1440px;
+  height: 84px;
+  padding: 0 40px;
+}
+.brand {
+  color: #222;
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: 24px;
+  letter-spacing: 2px;
+}
+.brand small {
+  font: 9px/1.5 monospace;
+  letter-spacing: 2px;
+  color: #69645e;
+}
+.brand-icon {
+  background: #bc422b;
+  color: white;
+  width: 35px;
+  height: 35px;
+  font: 32px/35px monospace;
+  border-radius: 0;
+  display: inline-block;
+  text-align: center;
+}
+.site-header nav {
+  gap: 30px;
+}
+.site-header nav a {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+.site-header nav a.active {
+  color: #bc422b;
+}
+.button {
+  border-radius: 2px;
+  box-shadow: none;
+}
+.button.primary {
+  background: #bc422b;
+}
+.button.outline {
+  border-color: #aaa39a;
+}
+.site-footer {
+  border-top: 1px solid #bfbab2;
+  background: transparent;
+  padding: 28px 40px;
+}
+.hero-art {
+  display: none;
+}
+.hero {
+  grid-template-columns: 1fr;
+  min-height: 460px;
+  padding-top: 70px;
+  padding-bottom: 70px;
+}
+.hero-copy {
+  max-width: 840px;
+}
+.hero h1 {
+  font-family: var(--sans);
+  font-weight: 750;
+  font-size: 64px;
+  line-height: 1.12;
+  letter-spacing: -2px;
+}
+.hero h1 br {
+  display: none;
+}
+.hero-kicker {
+  letter-spacing: 1px;
+}
+.hero-meta .little-star,
+.closing > span,
+.intro-strip > .strip-label {
+  display: none;
+}
+.work-art,
+.work-card,
+.tool-card,
+.panel {
+  border-radius: 0;
+  box-shadow: none;
+}
+.work-art {
+  height: 120px;
+  background: #d9d5cc !important;
+}
+.works-section {
+  background: #e4e0d8;
+}
+.section-heading h2 {
+  font-family: var(--sans);
+  font-weight: 650;
+}
+.closing {
+  padding: 45px 0;
+}
+.closing h2 {
+  font-size: 28px;
+}
+.tool-page-header h1 {
+  font-family: var(--sans);
+  font-weight: 700;
+}
+.page-container {
+  max-width: 1280px;
+}
+.workshop {
+  max-width: 1440px;
+  margin: auto;
+  padding: 45px 40px 25px;
+}
+.ws-masthead {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding-bottom: 30px;
+  border-bottom: 2px solid #282828;
+  margin-bottom: 28px;
+  gap: 25px;
+}
+.ws-overline {
+  font-size: 10px;
+  letter-spacing: 3px;
+  color: #77716a;
+  font-weight: 600;
+}
+.ws-masthead h1 {
+  font-family: var(--serif);
+  font-size: 43px;
+  letter-spacing: 1px;
+  font-weight: 700;
+  line-height: 1.5;
+  margin-top: 12px;
+}
+.ws-masthead h1 > span {
+  color: #bc422b;
+}
+.ws-date {
+  font-size: 11px;
+  line-height: 2;
+  color: #68615a;
+  text-align: right;
+  white-space: nowrap;
+}
+.ws-date b {
+  font: 10px monospace;
+  letter-spacing: 2px;
+}
+.ws-layout {
+  display: grid;
+  grid-template-columns: 278px minmax(0, 1fr);
+  gap: 40px;
+  align-items: start;
+}
+.ws-sidebar {
+  padding: 0 0 30px;
+}
+.ws-section-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 22px;
+}
+.ws-section-title > span {
+  font: 11px monospace;
+  color: #bc422b;
+}
+.ws-section-title h2 {
+  font-size: 16px;
+  font-weight: 650;
+}
+.ws-section-title button {
+  margin-left: auto;
+  font-size: 11px;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  color: #77716a;
+  padding: 0;
+}
+.ws-presets {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 22px;
+}
+.ws-presets button {
+  border: 1px solid #bbb5ac;
+  font-size: 11px;
+  padding: 6px 9px;
+  background: #e7e3db;
+}
+.ws-presets button:hover {
+  background: #ded8ce;
+}
+.ws-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.ws-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-bottom: 18px;
+  min-width: 0;
+}
+.ws-field > span,
+.ws-ops legend {
+  font-size: 12px;
+  font-weight: 550;
+  color: #625d56;
+}
+.ws-field input,
+.ws-field select {
+  min-width: 0;
+  width: 100%;
+  height: 39px;
+  border: 0;
+  border-bottom: 1px solid #a9a298;
+  background: transparent;
+  border-radius: 0;
+  color: #222;
+  padding: 5px 2px;
+  font-size: 14px;
+  outline-offset: 2px;
+}
+.ws-field input:focus,
+.ws-field select:focus {
+  outline-color: #bc422b;
+}
+.ws-ops {
+  margin: 0 0 22px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 7px;
+}
+.ws-ops legend {
+  margin-bottom: 10px;
+}
+.ws-ops label {
+  position: relative;
+  cursor: pointer;
+}
+.ws-ops input {
+  position: absolute;
+  opacity: 0;
+}
+.ws-ops label > span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 42px;
+  border: 1px solid #bbb5ac;
+  font-size: 10px;
+  color: #7a736b;
+}
+.ws-ops b {
+  font-size: 20px;
+  font-weight: 400;
+}
+.ws-ops input:checked + span {
+  background: #292929;
+  color: #fff;
+  border-color: #292929;
+}
+.ws-ops input:focus-visible + span {
+  outline: 2px solid #bc422b;
+  outline-offset: 3px;
+}
+.ws-toggles {
+  display: flex;
+  gap: 24px;
+  font-size: 12px;
+  margin: 0 0 20px;
+}
+.workshop input[type="checkbox"] {
+  accent-color: #bc422b;
+}
+.ws-print-settings {
+  border-top: 1px solid #d0cac0;
+  border-bottom: 1px solid #d0cac0;
+  margin: 20px 0;
+  padding: 13px 0;
+}
+.ws-print-settings summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+}
+.ws-print-settings summary > span {
+  float: right;
+  color: #8a8175;
+  font-size: 10px;
+  font-weight: 400;
+}
+.ws-print-settings .ws-fields {
+  margin-top: 15px;
+}
+.ws-primary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  width: 100%;
+  padding: 12px 16px;
+  background: #bc422b;
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  border: 1px solid #bc422b;
+}
+.ws-primary:hover {
+  background: #9d3422;
+}
+.ws-primary:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+.ws-primary > span {
+  font-size: 21px;
+  line-height: 1;
+}
+.ws-hint {
+  font-size: 10px;
+  line-height: 1.9;
+  color: #81786d;
+  margin-top: 14px;
+}
+.ws-history {
+  margin-top: 35px;
+  padding-top: 22px;
+  border-top: 1px solid #c4bdb3;
+}
+.ws-history-row {
+  padding: 12px 0;
+  border-bottom: 1px solid #d4cdc4;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+}
+.ws-history-row small {
+  display: block;
+  color: #81786d;
+  font-size: 10px;
+}
+.ws-history-row > strong {
+  font:
+    24px Georgia,
+    serif;
+}
+.ws-history-row > strong small {
+  display: inline;
+  font: 11px monospace;
+}
+.ws-paper {
+  background: #fffefa;
+  border: 1px solid #d7d0c5;
+  box-shadow: 3px 4px 0 #e1ddd5;
+  min-height: 690px;
+  padding: 28px 32px 30px;
+  min-width: 0;
+}
+.ws-paper-top {
+  display: flex;
+  justify-content: space-between;
+  font: 9px monospace;
+  letter-spacing: 2px;
+  border-bottom: 1px solid #d4cec3;
+  padding-bottom: 16px;
+  color: #81796c;
+  gap: 15px;
+}
+.ws-empty {
+  padding: 52px 5px 0;
+  text-align: center;
+}
+.ws-equation {
+  font:
+    italic 76px/1.6 Georgia,
+    serif;
+  letter-spacing: 3px;
+  color: #302f2d;
+}
+.ws-equation i {
+  font-style: normal;
+  font-size: 43px;
+  color: #bc422b;
+  vertical-align: 8px;
+}
+.ws-empty-rule {
+  width: 42px;
+  height: 2px;
+  background: #bc422b;
+  margin: 16px auto 34px;
+}
+.ws-empty h2 {
+  font-family: var(--serif);
+  font-size: 30px;
+  font-weight: 700;
+  margin: 15px 0;
+}
+.ws-empty p {
+  font-size: 12px;
+  color: #81796c;
+  line-height: 2.2;
+}
+.ws-empty-bottom {
+  display: flex;
+  justify-content: space-around;
+  margin-top: 80px;
+  padding-top: 20px;
+  border-top: 1px solid #e2dcd1;
+  color: #968b7c;
+  font-size: 10px;
+  gap: 12px;
+}
+.ws-paper-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 22px 0;
+  gap: 15px;
+}
+.ws-paper-heading h2 {
+  font-family: var(--serif);
+  font-size: 28px;
+  font-weight: 700;
+}
+.ws-paper-heading p {
+  font-size: 10px;
+  color: #81796c;
+  margin-top: 7px;
+}
+.ws-clock {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  color: #81796c;
+  font-size: 10px;
+}
+.ws-clock b {
+  font: 26px monospace;
+  color: #302f2d;
+}
+.ws-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid #292929;
+  border-bottom: 1px solid #d4cec3;
+  padding: 12px 0;
+  font-size: 10px;
+  color: #81796c;
+  gap: 10px;
+}
+.ws-toolbar button {
+  font-size: 10px;
+  color: #4b443c;
+  padding: 2px 0 2px 12px;
+}
+.ws-questions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 25px;
+  margin: 5px 0 20px;
+}
+.ws-question {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  position: relative;
+  min-width: 0;
+  border-bottom: 1px solid #e8e1d6;
+  padding: 21px 0 25px;
+}
+.ws-number {
+  font: 9px monospace;
+  color: #a69a8a;
+  min-width: 20px;
+  align-self: center;
+}
+.ws-question label {
+  font:
+    16px/1.5 Georgia,
+    "Songti SC",
+    serif;
+  white-space: normal;
+}
+.ws-question input {
+  width: 56px;
+  min-width: 35px;
+  flex: 1;
+  max-width: 100px;
+  border: 0;
+  border-bottom: 1px solid #a99b87;
+  border-radius: 0;
+  background: transparent;
+  text-align: center;
+  padding: 3px 0;
+  font:
+    16px Georgia,
+    serif;
+}
+.ws-question small {
+  position: absolute;
+  bottom: 4px;
+  right: 0;
+  color: #bc422b;
+  font-size: 9px;
+}
+.ws-question.is-correct small {
+  color: #4b715b;
+}
+.ws-question.is-wrong input {
+  color: #bc422b;
+}
+.ws-pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font: 10px monospace;
+  gap: 12px;
+  padding: 8px 0 20px;
+  color: #81796c;
+}
+.ws-pagination button {
+  font-size: 11px;
+  padding: 5px 0;
+}
+.workshop button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.ws-submit-row {
+  border-top: 1px solid #292929;
+  padding-top: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  font-size: 10px;
+  color: #81796c;
+}
+.ws-submit-row .ws-primary {
+  width: auto;
+  min-width: 140px;
+}
+.ws-submit-row label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.ws-result {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 20px 0;
+  border-bottom: 1px solid #d4cec3;
+}
+.ws-result > strong {
+  font:
+    40px Georgia,
+    serif;
+  color: #bc422b;
+}
+.ws-result strong small {
+  font-size: 16px;
+}
+.ws-result b {
+  font-size: 13px;
+}
+.ws-result p {
+  font-size: 10px;
+  color: #81796c;
+}
+.ws-result button {
+  margin-left: auto;
+  font-size: 11px;
+  text-decoration: underline;
+}
+.ws-colophon {
+  display: flex;
+  gap: 35px;
+  margin: 28px 0 10px;
+  border-top: 1px solid #bfbab2;
+  padding-top: 17px;
+  font-size: 10px;
+  color: #81796c;
+}
+.ws-colophon > span {
+  white-space: nowrap;
+  color: #bc422b;
+  letter-spacing: 2px;
+}
+.ws-colophon p {
+  max-width: 690px;
+}
+#ws-status {
+  font-size: 11px;
+  color: #a33220;
+  margin-top: 12px;
+}
+.footer-brand .brand-icon {
+  font-size: 22px;
+  width: 28px;
+  height: 28px;
+  line-height: 28px;
+}
+.hero-art {
+  display: none !important;
+}
+@media (min-width: 1500px) {
+  .workshop {
+    padding-top: 55px;
+  }
+  .ws-layout {
+    gap: 50px;
+    grid-template-columns: 300px minmax(0, 1fr);
+  }
+}
+@media (max-width: 1000px) {
+  .header-inner {
+    padding: 0 24px;
+  }
+  .site-header nav {
+    gap: 14px;
+  }
+  .site-header nav a {
+    font-size: 10px;
+  }
+  .workshop {
+    padding: 30px 24px;
+  }
+  .ws-layout {
+    grid-template-columns: 240px minmax(0, 1fr);
+    gap: 24px;
+  }
+  .ws-paper {
+    padding: 22px;
+  }
+  .ws-questions {
+    grid-template-columns: 1fr;
+  }
+  .ws-masthead h1 {
+    font-size: 34px;
+  }
+  .ws-date {
+    display: none;
+  }
+  .ws-empty {
+    padding-top: 70px;
+  }
+  .ws-equation {
+    font-size: 58px;
+  }
+}
+@media (max-width: 650px) {
+  .header-inner {
+    height: auto;
+    min-height: 90px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    padding: 12px 18px;
+    gap: 10px;
+  }
+  .brand {
+    font-size: 21px;
+  }
+  .site-header nav {
+    order: 3;
+    width: 100%;
+    justify-content: space-between;
+    padding: 5px 0 0;
+    gap: 5px;
+  }
+  .site-header nav a {
+    padding: 0 0 6px;
+    font-size: 10px;
+  }
+  .site-header #edit-profile {
+    font-size: 10px;
+    padding: 5px;
+  }
+  .workshop {
+    padding: 25px 18px;
+  }
+  .ws-masthead {
+    padding-bottom: 20px;
+    margin-bottom: 22px;
+  }
+  .ws-masthead h1 {
+    font-size: 29px;
+    letter-spacing: 0;
+  }
+  .ws-overline {
+    font-size: 9px;
+    letter-spacing: 2px;
+  }
+  .ws-layout {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .ws-sidebar {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+  .ws-history {
+    max-height: 220px;
+    overflow-y: auto;
+    margin-top: 22px;
+  }
+  .ws-presets {
+    margin-bottom: 15px;
+  }
+  .ws-field {
+    margin-bottom: 14px;
+  }
+  .ws-paper {
+    min-height: 530px;
+    padding: 20px 18px;
+  }
+  .ws-empty {
+    padding: 35px 0 0;
+  }
+  .ws-equation {
+    font-size: 60px;
+  }
+  .ws-equation i {
+    font-size: 35px;
+  }
+  .ws-empty h2 {
+    font-size: 25px;
+  }
+  .ws-empty-bottom {
+    margin-top: 45px;
+    font-size: 9px;
+  }
+  .ws-question label {
+    font-size: 18px;
+  }
+  .ws-question input {
+    max-width: 90px;
+  }
+  .ws-paper-heading h2 {
+    font-size: 24px;
+  }
+  .ws-paper-top {
+    font-size: 8px;
+    letter-spacing: 1px;
+  }
+  .ws-toolbar {
+    font-size: 9px;
+  }
+  .ws-toolbar button {
+    font-size: 9px;
+    padding-left: 8px;
+  }
+  .ws-colophon {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .site-footer {
+    padding: 25px 18px;
+    gap: 15px;
+  }
+  .site-footer > span {
+    font-size: 10px;
+  }
+  .hero h1 {
+    font-size: 40px;
+  }
+  .ws-submit-row .ws-primary {
+    min-width: 120px;
+    padding: 9px;
+  }
+  .ws-result {
+    gap: 12px;
+  }
+  .ws-result > strong {
+    font-size: 34px;
+  }
+}
+@media print {
+  .site-header,
+  .site-footer,
+  .workshop {
+    display: none !important;
+  }
+  #print-sheet {
+    display: block !important;
+    color: #000;
+    background: #fff;
+    font-family: "Songti SC", serif;
+  }
+  #print-sheet h1 {
+    font-size: 24px;
+  }
+  #print-sheet p {
+    margin: 18px 0;
+  }
+  .print-questions {
+    margin-top: 30px;
+    font-size: 14px;
+  }
+  .print-answers {
+    line-height: 2;
+  }
+}
