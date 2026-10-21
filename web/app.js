@@ -1,5 +1,5 @@
 import { workshopView, bindWorkshop } from "./workshop.js";
-import { languages, detectLanguage, countCode } from "./logic.js";
+import { codeView, bindCode } from "./code-tool.js";
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -104,9 +104,7 @@ function readStorage(key, fallback) {
   }
 }
 let profile = readStorage("growth-garden-profile", structuredClone(defaults));
-let editor = null,
-  codeRows = [],
-  codeBusy = false;
+let editor = null;
 let toastTimer;
 function toast(message) {
   $("#toast").textContent = message;
@@ -167,174 +165,6 @@ function homeView() {
       <a class="tool-card math-tool" href="#math"><span class="tool-number">PROJECT / 02</span><div class="math-illustration"><span>7 <i>+</i> 5</span><span class="math-equals">=</span><span class="answer-sticker">12<span>✓</span></span></div><div class="tool-card-bottom"><div><span class="tag">每天进步一点点</span><h3>四则运算练习</h3><p>为小学生生成一份专属练习。<br>自己设置难度，即时批改，轻松掌握每一步。</p></div><span class="circle-arrow">↗</span></div><div class="tool-footnote">自主出题 <span>·</span> 自动批改 <span>·</span> 打印练习</div></a></div>
     </section><section class="closing page-container"><span>✳</span><h2>故事还在继续，<br>下一页，留给明天。</h2><p>KEEP LEARNING. KEEP MAKING. KEEP GROWING.</p><div class="data-actions"><button class="text-link" id="export-profile">备份我的主页 ↓</button><button class="text-link" id="import-profile">导入备份 ↑</button><input type="file" id="profile-file" accept=".json" hidden></div></section>`;
 }
-function toolHeader(number, english, title, description, current) {
-  return `<div class="page-container tool-page"><div class="breadcrumb"><a href="#tools">工具箱</a><span>/</span><span>${title}</span></div><div class="tool-page-heading"><div><span class="eyebrow">PROJECT ${number} / ${english}</span><h1>${title}<span class="heading-dot">.</span></h1><p>${description}</p></div><div class="tool-switch"><a href="#code" class="${current === "code" ? "active" : ""}">${icon("code", 18)} 代码量</a><a href="#math" class="${current === "math" ? "active" : ""}">${icon("math", 18)} 四则运算</a></div></div>`;
-}
-const codeSample = `// 一个小小的问候\nfunction greet(name) {\n  /* 把想法变成现实 */\n  const message = "Hello, " + name;\n  console.log(message);\n}\n\ngreet("world");\n`;
-function codeView() {
-  return `${toolHeader("01", "COUNT THE LITTLE EFFORTS", "代码量统计", "每一行，都是把想法变成现实的努力。", "code")}
-    <div class="code-layout"><section class="panel upload-panel"><div class="panel-title">${icon("folder")}<h2>选择你的代码</h2><span>01</span></div><div class="dropzone" id="dropzone"><span class="upload-icon">${icon("upload", 30)}</span><h3>把代码文件拖到这里</h3><p>或选择本地文件、整个项目文件夹</p><div class="upload-buttons"><button class="button primary small" id="choose-files">选择文件</button><button class="button outline small" id="choose-folder">${icon("folder", 16)} 选择文件夹</button></div><input type="file" id="code-files" multiple hidden accept=".js,.mjs,.cjs,.jsx,.ts,.tsx,.py,.c,.cpp,.h,.hpp,.cc,.java,.css,.scss,.html,.htm,.vue,.json,.sql"><input type="file" id="code-folder" multiple webkitdirectory hidden><small>JS / TS / Python / C / C++ / Java / HTML / CSS / JSON / SQL</small></div>
-      <details class="paste-details"><summary>也可以直接粘贴代码 <span>＋</span></summary><div class="paste-heading"><label for="paste-language">语言</label><select id="paste-language">${Object.entries(
-        languages,
-      )
-        .map(([k, v]) => `<option value="${k}">${v.label}</option>`)
-        .join(
-          "",
-        )}</select><button class="text-link" id="load-sample">填入示例</button></div><textarea id="paste-code" spellcheck="false" placeholder="在这里粘贴代码…" rows="8" aria-label="粘贴代码"></textarea><button class="button primary small" id="count-paste">统计这段代码 ${icon("arrow", 16)}</button></details>
-      <div class="privacy-note">${icon("leaf", 18)}<p>文件在浏览器内处理，不会上传。<br>自动跳过 .git、node_modules、构建输出和不支持的文件。</p></div><div class="status-message" id="code-status" role="status"></div></section>
-      <section class="panel result-panel"><div class="panel-title">${icon("code")}<h2>统计概览</h2><button class="text-link" id="clear-code">清空</button></div><div id="code-results">${codeResults()}</div></section></div>
-      <div class="explanation"><span>统计口径</span><p>按物理行统计；空白行独立计算，纯注释行计为注释，代码与注释同一行计为代码。末尾换行不多算一行。Python 三引号字符串按代码计；HTML 中的 script / style 按对应语言处理。这是基础词法统计，未预处理 C / C++ 宏，也不展开外部文件。</p></div></div>`;
-}
-function codeResults() {
-  if (!codeRows.length)
-    return `<div class="empty-state"><div class="empty-code">&lt; / &gt;</div><h3>你的努力，值得被看见。</h3><p>选择一些代码文件，<br>这里就会呈现项目的行数与语言分布。</p><span class="empty-caption">READY WHEN YOU ARE</span></div>`;
-  const sum = codeRows.reduce(
-    (a, r) => {
-      for (const k of ["total", "code", "comment", "blank"]) a[k] += r[k];
-      return a;
-    },
-    { total: 0, code: 0, comment: 0, blank: 0 },
-  );
-  const groups = Object.entries(languages)
-    .map(([key, l]) => ({
-      key,
-      label: l.label,
-      lines: codeRows
-        .filter((r) => r.language === key)
-        .reduce((n, r) => n + r.total, 0),
-    }))
-    .filter((g) => g.lines > 0);
-  return `<div class="stat-total"><span>总行数 <small>/ ${codeRows.length} 个文件</small></span><strong>${sum.total.toLocaleString()}</strong></div><div class="code-stats"><div><span class="legend-dot code-dot"></span><strong>${sum.code}</strong><span>代码行</span></div><div><span class="legend-dot comment-dot"></span><strong>${sum.comment}</strong><span>注释行</span></div><div><span class="legend-dot blank-dot"></span><strong>${sum.blank}</strong><span>空白行</span></div></div><div class="composition-bar" aria-label="行数构成">${["code", "comment", "blank"].map((k) => `<span class="bar-${k}" style="width:${sum.total ? (sum[k] / sum.total) * 100 : 0}%"></span>`).join("")}</div><div class="language-breakdown"><h3>语言分布</h3>${groups.map((g, i) => `<div class="language-row"><span>${escape(g.label)}</span><div><i style="width:${(g.lines / sum.total) * 100}%;background:${["#315e4b", "#bc805b", "#8b9d74", "#869eac"][i % 4]}"></i></div><strong>${g.lines} 行</strong></div>`).join("")}</div><div class="file-heading"><h3>文件明细</h3><button class="text-link" id="export-code">${icon("download", 15)} 导出 CSV</button></div><div class="table-scroll"><table><thead><tr><th>文件</th><th>代码</th><th>注释</th><th>空白</th><th>总计</th></tr></thead><tbody>${codeRows.map((r) => `<tr><td title="${escape(r.name)}">${escape(r.name)}<small>${languages[r.language].label}</small></td><td>${r.code}</td><td>${r.comment}</td><td>${r.blank}</td><td>${r.total}</td></tr>`).join("")}</tbody></table></div>`;
-}
-function updateCodeResults() {
-  $("#code-results").innerHTML = codeResults();
-  $("#export-code")?.addEventListener("click", () => {
-    const csvCell = (v) => '"' + String(v).replaceAll('"', '""') + '"';
-    const total = codeRows.reduce(
-      (a, r) =>
-        ["code", "comment", "blank", "total"].map((k, i) => a[i] + r[k]),
-      [0, 0, 0, 0],
-    );
-    const csv = [
-      ["文件", "语言", "代码行", "注释行", "空白行", "总行数"],
-      ...codeRows.map((r) => [
-        r.name,
-        languages[r.language].label,
-        r.code,
-        r.comment,
-        r.blank,
-        r.total,
-      ]),
-      ["合计", "", ...total],
-    ]
-      .map((row) => row.map(csvCell).join(","))
-      .join("\r\n");
-    download("\ufeff" + csv, "代码量统计.csv", "text/csv;charset=utf-8");
-  });
-}
-async function processFiles(files) {
-  if (codeBusy) return;
-  codeBusy = true;
-  const status = $("#code-status");
-  const all = [...files];
-  let skipped = 0,
-    failed = 0;
-  status.textContent = "正在读取文件…";
-  const next = [];
-  for (const file of all) {
-    const path = file.webkitRelativePath || file.name;
-    const language = detectLanguage(file.name);
-    if (
-      !language ||
-      path
-        .split("/")
-        .some((part) =>
-          [
-            "node_modules",
-            ".git",
-            ".tools",
-            "dist",
-            "build",
-            "coverage",
-            ".venv",
-            "venv",
-            "__pycache__",
-          ].includes(part),
-        )
-    ) {
-      skipped++;
-      continue;
-    }
-    try {
-      next.push({
-        name: path,
-        language,
-        ...countCode(await file.text(), language),
-      });
-    } catch {
-      failed++;
-    }
-  }
-  codeRows = next.sort((a, b) => a.name.localeCompare(b.name));
-  if (location.hash === "#code") {
-    updateCodeResults();
-    status.textContent = `已统计 ${next.length} 个文件${skipped ? `，跳过 ${skipped} 个不支持或忽略的文件` : ""}${failed ? `，${failed} 个文件读取失败，请重新选择` : ""}。`;
-  }
-  codeBusy = false;
-}
-function bindCode() {
-  $("#choose-files").onclick = () => $("#code-files").click();
-  $("#choose-folder").onclick = () => $("#code-folder").click();
-  for (const id of ["code-files", "code-folder"])
-    $("#" + id).onchange = (event) => {
-      processFiles(event.target.files);
-      event.target.value = "";
-    };
-  const zone = $("#dropzone");
-  zone.ondragover = (event) => {
-    event.preventDefault();
-    zone.classList.add("dragover");
-  };
-  zone.ondragleave = () => zone.classList.remove("dragover");
-  zone.ondrop = (event) => {
-    event.preventDefault();
-    zone.classList.remove("dragover");
-    processFiles(event.dataTransfer.files);
-  };
-  $("#load-sample").onclick = () => {
-    $("#paste-code").value = codeSample;
-  };
-  $("#count-paste").onclick = () => {
-    const text = $("#paste-code").value;
-    if (!text.trim()) {
-      toast("先粘贴一段代码吧。");
-      $("#paste-code").focus();
-      return;
-    }
-    if (codeBusy) {
-      toast("文件还在读取，请稍等。");
-      return;
-    }
-    const language = $("#paste-language").value;
-    codeRows = [
-      {
-        name: "粘贴代码." + languages[language].extensions[0],
-        language,
-        ...countCode(text, language),
-      },
-    ];
-    updateCodeResults();
-    $("#code-status").textContent = "已完成粘贴代码统计。";
-  };
-  $("#clear-code").onclick = () => {
-    if (codeBusy) return;
-    codeRows = [];
-    updateCodeResults();
-    $("#code-status").textContent = "";
-  };
-  updateCodeResults();
-}
-
 function openEditor(kind, id) {
   editor = { kind, id };
   const personal = kind === "profile";
