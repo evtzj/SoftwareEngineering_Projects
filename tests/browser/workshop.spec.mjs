@@ -3,15 +3,15 @@ import { evaluateExpression } from "../../web/arithmetic.js";
 test("工作台：周练默认值、分页保留答案、计时、批改与错题", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  await page.goto("/");
+  await page.goto("/#math");
   await expect(page.locator(".ws-masthead")).toBeVisible();
   await expect(page.locator("[name=count]")).toHaveValue("300");
   await page.getByRole("button", { name: "生成练习", exact: true }).click();
-  await expect(page.locator("[data-ws-answer]")).toHaveCount(30);
+  await expect(page.locator("[data-ws-answer]")).toHaveCount(8);
   await expect(page.locator(".ws-paper-heading")).toContainText("300 道题");
   await page.locator('[data-ws-answer="0"]').fill("999");
   await page.getByRole("button", { name: "下一页" }).click();
-  await page.locator('[data-ws-answer="30"]').fill("1/2");
+  await page.locator('[data-ws-answer="8"]').fill("1/2");
   await page.getByRole("button", { name: "上一页" }).click();
   await expect(page.locator('[data-ws-answer="0"]')).toHaveValue("999");
   await expect(page.locator("#ws-progress")).toContainText("2 / 300");
@@ -19,12 +19,15 @@ test("工作台：周练默认值、分页保留答案、计时、批改与错�
   await expect(page.locator(".ws-result")).toContainText("未答 298");
   await page.getByRole("button", { name: "错题重练" }).click();
   await expect(page.locator(".ws-paper-heading h2")).toHaveText("再解一次");
-  await page.getByRole("button", { name: "口算 20 题" }).click();
+  await page.getByRole("link", { name: "1. 设置练习", exact: true }).click();
+  await page.getByRole("button", { name: "混合 20 题" }).click();
   await page.getByRole("button", { name: "生成练习", exact: true }).click();
-  await expect(page.locator("[data-ws-answer]")).toHaveCount(20);
+  await expect(page.locator(".ws-paper-heading")).toContainText("20 道题");
+  await expect(page.locator("[data-ws-answer]")).toHaveCount(8);
   const expressions = await page
     .locator(".ws-question label")
     .allTextContents();
+  for (const expression of expressions) expect(new Set(expression.match(/[+−×÷]/g)).size).toBeGreaterThan(1);
   for (let i = 0; i < expressions.length; i++)
     await page
       .locator(`[data-ws-answer="${i}"]`)
@@ -33,6 +36,12 @@ test("工作台：周练默认值、分页保留答案、计时、批改与错�
           evaluateExpression(expressions[i].replace(/\s*=\s*$/, "")).answer,
         ),
       );
+  for (let round = 0; round < 2; round++) {
+    await page.getByRole("button", { name: "下一页" }).click();
+    const labels = await page.locator(".ws-question label").allTextContents();
+    const inputs = page.locator("[data-ws-answer]");
+    for (let i = 0; i < labels.length; i++) await inputs.nth(i).fill(String(evaluateExpression(labels[i].replace(/\s*=\s*$/, "")).answer));
+  }
   await page.getByRole("button", { name: "交卷批改" }).click();
   await expect(page.locator(".ws-result>strong")).toHaveText("100%");
   const download = page.waitForEvent("download");
@@ -63,12 +72,14 @@ test("工作台：周练默认值、分页保留答案、计时、批改与错�
 });
 test("错误规则不会丢失已有练习", async ({ page }) => {
   await page.goto("/#math");
-  await page.getByRole("button", { name: "口算 20 题" }).click();
+  await page.getByRole("link", { name: "1. 设置练习", exact: true }).click();
+  await page.getByRole("button", { name: "混合 20 题" }).click();
   await page.getByRole("button", { name: "生成练习", exact: true }).click();
-  await expect(page.locator("[data-ws-answer]")).toHaveCount(20);
+  await expect(page.locator("[data-ws-answer]")).toHaveCount(8);
+  await page.getByRole("link", { name: "1. 设置练习", exact: true }).click();
   await page.locator("[name=division]").selectOption("remainder");
   await page.locator("[name=operatorCount]").selectOption("2");
   await page.getByRole("button", { name: "生成练习", exact: true }).click();
   await expect(page.locator("#ws-status")).toContainText("一个运算符");
-  await expect(page.locator("[data-ws-answer]")).toHaveCount(20);
+  await expect(page.locator("[data-ws-answer]")).toHaveCount(8);
 });

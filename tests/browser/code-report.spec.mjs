@@ -17,6 +17,7 @@ test("五语言表格与三种下载内容一致；桌面和手机可用", async
     "7",
     "2",
     "1",
+    "10",
     "2",
     "4",
     "3",
@@ -25,11 +26,12 @@ test("五语言表格与三种下载内容一致；桌面和手机可用", async
   ]);
   const total = page.locator("#code-summary tbody tr").last();
   await expect(total.locator("td")).toHaveText([
-    "合计",
+    "SUM / 合计",
     "5",
     "35",
     "6",
     "3",
+    "44",
     "10",
     "4",
     "1",
@@ -49,7 +51,7 @@ test("五语言表格与三种下载内容一致；桌面和手机可用", async
   const csv = await getDownload("导出 CSV");
   expect(csv.name).toBe("代码量统计.csv");
   expect(csv.bytes.toString("utf8")).toContain(
-    '"合计","5","35","6","3","10","4","1","2.6","3"',
+    '"SUM / 合计","5","35","6","3","44","10","4","1","2.6","3"',
   );
   const json = await getDownload("导出 JSON");
   expect(json.name).toBe("代码量统计.json");
@@ -61,20 +63,23 @@ test("五语言表格与三种下载内容一致；桌面和手机可用", async
   const sheets = unzipSync(excel.bytes);
   expect(strFromU8(sheets["xl/workbook.xml"])).toContain("统计口径");
   expect(strFromU8(sheets["xl/worksheets/sheet1.xml"])).toMatch(
-    /<c r="I7"[^>]*><v>2.6<\/v>/,
+    /<c r="J7"[^>]*><v>2.6<\/v>/,
   );
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
   await page.screenshot({
     path: "preview/code-report-desktop.png",
     fullPage: true,
   });
-  await page.getByRole("link", { name: "前往运算练习" }).click();
-  await page.getByRole("link", { name: "02 / 代码统计" }).click();
+  await page.locator("[data-nav=math]").click();
+  await page.getByRole("link", { name: "代码统计", exact: true }).click();
+  await page.getByRole("link", { name: "2. 统计报告", exact: true }).click();
   await expect(page.locator(".stat-total strong")).toHaveText("44");
   await page.setViewportSize({ width: 390, height: 844 });
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth),
   ).toBeLessThanOrEqual(390);
   await expect(page.getByRole("button", { name: "导出 Excel" })).toBeEnabled();
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
   await page.screenshot({
     path: "preview/code-report-mobile.png",
     fullPage: true,
@@ -96,6 +101,7 @@ test("上传源码排除空行；错误源码及空文件提供明确状态", as
   await expect(
     page.locator("#code-functions-table tbody tr td").last(),
   ).toHaveText("3");
+  await page.getByRole("link", { name: "1. 导入源码", exact: true }).click();
   await page
     .locator("#code-files")
     .setInputFiles({

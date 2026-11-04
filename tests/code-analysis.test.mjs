@@ -198,15 +198,15 @@ test("CSV/JSON/XLSX 使用同一报告；工作表、数值和转义可读取", 
   for (const s of codeSamples) files.push(await analyzeSource(s));
   const report = buildCodeReport(files);
   const csv = reportCSV(report);
-  assert.match(csv, /"C","1","7","2","1","2","4","3","3.5","3.5"/);
+  assert.match(csv, /"C","1","7","2","1","10","2","4","3","3.5","3.5"/);
   assert.equal(JSON.parse(JSON.stringify(report)).total.mean, 2.6);
   const zip = unzipSync(reportXLSX(report));
   const workbook = strFromU8(zip["xl/workbook.xml"]);
   for (const name of ["语言汇总", "文件明细", "函数明细", "统计口径"])
     assert.ok(workbook.includes(name));
   const summary = strFromU8(zip["xl/worksheets/sheet1.xml"]);
-  assert.match(summary, /<c r="I7"[^>]*t="n"><v>2.6<\/v>/);
-  assert.match(summary, /<c r="J7"[^>]*t="n"><v>3<\/v>/);
+  assert.match(summary, /<c r="J7"[^>]*t="n"><v>2.6<\/v>/);
+  assert.match(summary, /<c r="K7"[^>]*t="n"><v>3<\/v>/);
   const escaped = buildCodeReport([{ ...files[0], name: '名字<&".c' }]);
   assert.match(
     strFromU8(unzipSync(reportXLSX(escaped))["xl/worksheets/sheet2.xml"]),

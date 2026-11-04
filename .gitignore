@@ -5,3 +5,4 @@ test-results/
 playwright-report/
 *.m4a
 notes/
+.DS_Store

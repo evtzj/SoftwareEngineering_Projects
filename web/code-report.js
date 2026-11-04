@@ -6,6 +6,7 @@ export const summaryColumns = [
   ["code", "代码行数"],
   ["blank", "空行数"],
   ["comment", "注释行数"],
+  ["total", "总行数"],
   ["functionCount", "函数个数"],
   ["max", "最大值"],
   ["min", "最小值"],
@@ -52,7 +53,7 @@ function summarize(files, key) {
     { total: 0, code: 0, blank: 0, comment: 0 },
   );
   return {
-    language: key === "total" ? "合计" : languages[key].label,
+    language: key === "total" ? "SUM / 合计" : languages[key].label,
     key,
     files: files.length,
     ...counts,

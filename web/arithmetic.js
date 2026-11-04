@@ -180,6 +180,8 @@ export function generateQuestions(input, random = Math.random) {
           ? s.operations[index]
           : s.operations[Math.floor(random() * s.operations.length)],
       );
+      // Mixed practice includes different operation types in every expression.
+      if (s.operations.length > 1 && new Set(ops).size === 1) continue;
       const q = candidate(nums, ops, s, s.parentheses);
       if (q && !seen.has(q.expression)) {
         seen.add(q.expression);

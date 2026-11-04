@@ -3,29 +3,30 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#244e41" />
+    <meta name="theme-color" content="#f5f5f7" />
     <meta
       name="description"
-      content="记录成长、收藏作品，也把小小的想法做成有用的工具。"
+      content="演算室：四则混合运算练习、本地与 GitHub 代码量统计和个人档案。"
     />
     <title>演算室 · 四则运算工作台</title>
     <link rel="icon" type="image/svg+xml" href="./assets/sprout.svg" />
     <link rel="stylesheet" href="./style.css" />
     <link rel="stylesheet" href="./workshop.css" />
     <link rel="stylesheet" href="./code-tool.css" />
+    <link rel="stylesheet" href="./theme.css" />
   </head>
   <body>
     <a class="skip-link" href="#main">跳到主要内容</a>
     <header class="site-header">
       <div class="header-inner">
-        <a class="brand" href="#math" aria-label="演算室首页"
+        <a class="brand" href="#start" aria-label="演算室首页"
           ><span class="brand-icon">＋</span
-          ><span>演算室<small>ARITHMETIC WORKSHOP</small></span></a
+          ><span>演算室</span></a
         >
         <nav aria-label="主导航">
-          <a href="#math" data-nav="math">01 / 运算练习</a
-          ><a href="#code" data-nav="code">02 / 代码统计</a
-          ><a href="#home" data-nav="home">03 / 个人档案</a>
+          <a href="#start" data-nav="start">首页</a><a href="#math" data-nav="math">运算练习</a
+          ><a href="#code" data-nav="code">代码统计</a
+          ><a href="#home" data-nav="home">个人档案</a>
         </nav>
         <button class="button small outline" id="edit-profile">
           <span aria-hidden="true">✎</span> 编辑主页
@@ -34,7 +35,7 @@
     </header>
     <main id="main"></main>
     <footer class="site-footer">
-      <a class="brand footer-brand" href="#home"
+      <a class="brand footer-brand" href="#start"
         ><span class="brand-icon">＋</span>演算室</a
       ><span>设定 · 演算 · 校对</span
       ><span class="footer-note">软件工程课程设计 · 2026</span>

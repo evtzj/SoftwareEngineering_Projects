@@ -1,0 +1,137 @@
+import {test,expect} from '@playwright/test';
+import {evaluateExpression} from '../../web/arithmetic.js';
+import {readFile} from 'node:fs/promises';
+
+test('错题跨刷新保存，未答不入库，重练答对后变成已掌握',async({page})=>{
+ await page.goto('/#math');
+ await page.locator('[name=count]').fill('2');
+ await page.getByRole('button',{name:'生成练习',exact:true}).click();
+ await expect(page).toHaveURL(/math\/practice$/);
+ await page.locator('[data-ws-answer="0"]').fill('999999');
+ await page.getByRole('button',{name:'交卷批改'}).click();
+ await page.getByRole('link',{name:'错题本',exact:true}).click();
+ await expect(page.locator('.mistake-row')).toHaveCount(1);
+ await page.reload();
+ await expect(page.locator('.mistake-row')).toHaveCount(1);
+ await page.getByRole('button',{name:'练习待巩固题目'}).click();
+ const expression=(await page.locator('.ws-question label').textContent()).replace(/\s*=\s*$/,'');
+ await page.locator('[data-ws-answer="0"]').fill(String(evaluateExpression(expression).answer));
+ await page.getByRole('button',{name:'交卷批改'}).click();
+ await page.getByRole('link',{name:'错题本',exact:true}).click();
+ await expect(page.locator('.mistake-row')).toHaveCount(0);
+ await page.locator('#mistakes-mastered').check();
+ await expect(page.locator('.mistake-row')).toHaveCount(1);
+ await expect(page.locator('.mistake-row')).toContainText('已掌握');
+ await page.setViewportSize({width:390,height:844});
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+ await page.evaluate(()=>window.scrollTo({top:0,behavior:"instant"}));
+ await page.screenshot({path:'preview/mistake-library.png',fullPage:true});
+});
+
+test('保存两份真实报告、刷新后比较并导出，还原历史结果',async({page})=>{
+ const upload=async(text)=>page.locator('#code-files').setInputFiles({name:'demo.py',mimeType:'text/plain',buffer:Buffer.from(text)});
+ await page.goto('/#code');
+ await upload('def add(a,b):\n    return a+b\n');
+ await expect(page).toHaveURL(/code\/report$/);
+ await page.locator('#snapshot-name').fill('初版');
+ await page.getByRole('button',{name:'保存到历史'}).click();
+ await page.getByRole('link',{name:'1. 导入源码',exact:true}).click();
+ await upload('def add(a,b):\n    total=a+b\n    return total\n\ndef sub(a,b):\n    return a-b\n');
+ await expect(page).toHaveURL(/code\/report$/);
+ await page.locator('#snapshot-name').fill('改进版');
+ await page.getByRole('button',{name:'保存到历史'}).click();
+ await page.getByRole('link',{name:'历史与对比',exact:true}).click();
+ await page.reload();
+ await expect(page.locator('.archive-row')).toHaveCount(2);
+ await page.getByRole('link',{name:'版本对比',exact:true}).click();
+ await page.locator('#compare-before').selectOption({label:'初版'});
+ await page.locator('#compare-after').selectOption({label:'改进版'});
+ await page.getByRole('button',{name:'对比报告',exact:true}).click();
+ await expect(page.locator('#code-comparison')).toContainText('+3');
+ await expect(page.locator('#code-comparison')).toContainText('+1');
+ await page.getByRole('button',{name:'按语言比较',exact:true}).click();
+ await expect(page.locator('#code-comparison')).toContainText('Python');
+ await page.getByRole('button',{name:'总体变化',exact:true}).click();
+ const download=page.waitForEvent('download');
+ await page.getByRole('button',{name:'导出对比 CSV'}).click();
+ const csv=await download;
+ expect((await readFile(await csv.path())).toString('utf8')).toContain('"代码行","2","5","3"');
+ await page.evaluate(()=>window.scrollTo({top:0,behavior:"instant"}));
+ await page.screenshot({path:'preview/report-comparison.png',fullPage:true});
+ await page.getByRole('link',{name:'历史报告',exact:true}).click();
+ await page.locator('.archive-row').filter({has:page.getByRole('heading',{name:'初版',exact:true})}).getByRole('button',{name:'打开报告'}).click();
+ await expect(page.locator('.stat-total strong')).toHaveText('2');
+});
+
+test('学习计划编辑、完成、持久化及备份，成长作品筛选',async({page})=>{
+ await page.goto('/#plans');
+ await page.getByLabel('计划名称',{exact:true}).fill('完成混合运算练习');
+ await page.getByLabel('截止日期（可选）').fill('2026-12-01');
+ await page.getByLabel('优先级',{exact:true}).selectOption('high');
+ await page.getByRole('button',{name:'添加计划',exact:true}).click();
+ await expect(page.locator('.plan-row')).toHaveCount(1);
+ await page.locator('.plan-row').getByRole('button',{name:'编辑',exact:true}).click();
+ await page.getByLabel('计划名称',{exact:true}).fill('每天练习20题');
+ await page.getByRole('button',{name:'保存计划',exact:true}).click();
+ await page.locator('[data-plan-toggle]').check();
+ await page.reload();
+ await expect(page.locator('.plan-row')).toContainText('每天练习20题');
+ await expect(page.locator('[data-plan-toggle]')).toBeChecked();
+ await page.getByRole('button',{name:'进行中',exact:true}).click();
+ await expect(page.locator('.plan-row')).toHaveCount(0);
+ await page.getByRole('button',{name:'全部',exact:true}).click();
+ await page.evaluate(()=>window.scrollTo({top:0,behavior:"instant"}));
+ await page.screenshot({path:'preview/learning-plans.png',fullPage:true});
+ await page.getByRole('link',{name:'个人简介',exact:true}).click();
+ const download=page.waitForEvent('download');
+ await page.getByRole('button',{name:'备份我的主页'}).click();
+ const result=await download;
+ const profile=JSON.parse(await readFile(await result.path(),'utf8'));
+ expect(profile.plans[0].title).toBe('每天练习20题');
+ expect(profile.plans[0].done).toBe(true);
+ await page.getByRole('link',{name:'作品收藏',exact:true}).click();
+ await page.getByLabel('搜索作品',{exact:true}).fill('编程笔记');
+ await expect(page.locator('.work-card:visible')).toHaveCount(1);
+ await page.getByLabel('搜索作品',{exact:true}).fill('没有这个作品');
+ await expect(page.locator('.work-card:visible')).toHaveCount(0);
+ await expect(page.locator('#works .feature-empty')).toBeVisible();
+ await page.setViewportSize({width:390,height:844});
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+});
+
+test('学习计划能随档案恢复，旧版无计划备份也可导入',async({page})=>{
+ await page.goto('/#plans');
+ await page.getByLabel('计划名称',{exact:true}).fill('准备课程答辩');
+ await page.getByRole('button',{name:'添加计划',exact:true}).click();
+ await expect(page.locator('.plan-row')).toHaveCount(1);
+ const backup=await page.evaluate(()=>JSON.parse(localStorage.getItem('growth-garden-profile')));
+ await page.locator('[data-plan-delete]').click();
+ await expect(page.locator('.plan-row')).toHaveCount(0);
+ const upload=async(name,data)=>page.locator('#profile-file').setInputFiles({name,mimeType:'application/json',buffer:Buffer.from(JSON.stringify(data))});
+ await page.goto('/#home');
+ await upload('with-plans.json',backup);
+ await page.getByRole('link',{name:'学习计划',exact:true}).click();
+ await expect(page.locator('.plan-row')).toContainText('准备课程答辩');
+ await page.goto('/#home');
+ const {plans,...legacy}=backup;
+ await upload('legacy.json',legacy);
+ await page.getByRole('link',{name:'学习计划',exact:true}).click();
+ await expect(page.locator('.plan-row')).toHaveCount(0);
+});
+
+test('历史存储空间不足时给出提示，不伪造已保存记录',async({page})=>{
+ await page.goto('/#code');
+ await page.locator('#code-files').setInputFiles({name:'tiny.py',mimeType:'text/plain',buffer:Buffer.from('print(1)\n')});
+ await expect(page).toHaveURL(/code\/report$/);
+ await page.evaluate(()=>{
+  const original=Storage.prototype.setItem;
+  Storage.prototype.setItem=function(key,value){
+    if(key==='code-report-history')throw new DOMException('Quota exceeded','QuotaExceededError');
+    return original.call(this,key,value);
+  };
+ });
+ await page.getByRole('button',{name:'保存到历史'}).click();
+ await expect(page.locator('.report-status')).toContainText('未能更新');
+ await page.getByRole('link',{name:'历史与对比',exact:true}).click();
+ await expect(page.locator('.archive-row')).toHaveCount(0);
+});

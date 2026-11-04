@@ -34,6 +34,7 @@ test("主页：导航、编辑保存及桌面和手机排版", async ({ page }) 
   await expect(
     page.getByRole("heading", { name: "你好，我是 测试同学。" }),
   ).toBeVisible();
+  await page.getByRole("link", { name: "成长记录", exact: true }).click();
   await page.getByRole("button", { name: "添加足迹" }).click();
   await page.getByLabel("时间或阶段").fill("2026");
   await page.getByLabel("标题", { exact: true }).fill("测试记录");
@@ -43,7 +44,7 @@ test("主页：导航、编辑保存及桌面和手机排版", async ({ page }) 
   await expect(
     page.getByRole("heading", { name: "测试记录", exact: true }),
   ).toBeVisible();
-  await page.getByRole("link", { name: "让想法留下形状" }).click();
+  await page.getByRole("link", { name: "作品收藏", exact: true }).click();
   await expect(page).toHaveURL(/#works$/);
   await page.evaluate(() => localStorage.clear());
   await page.goto("/#home");
@@ -66,6 +67,7 @@ test("代码统计：示例、文件读取、报告导出", async ({ page }) => 
   await page.getByRole("button", { name: "统计这段代码" }).click();
   await expect(page.locator(".stat-total strong")).toHaveText("8");
   await expect(page.locator(".code-stats strong")).toHaveText(["5", "2", "1"]);
+  await page.getByRole("link", { name: "1. 导入源码", exact: true }).click();
   await page
     .locator("#code-files")
     .setInputFiles({

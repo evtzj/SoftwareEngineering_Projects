@@ -1,0 +1,51 @@
+import { test, expect } from '@playwright/test';
+
+test('任务首页、分步作答与返回设置保留答案', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name:/留一点空间，\s*给思考。/ })).toBeVisible();
+  await expect(page.locator('.launch-card')).toHaveCount(3);
+  await page.screenshot({ path:'preview/task-home.png', fullPage:true });
+  await page.getByRole('link', { name:'四则运算，开始练习', exact:true }).click();
+  await expect(page.locator('#ws-settings')).toBeVisible();
+  await expect(page.locator('.ws-paper')).toBeHidden();
+  await expect(page.locator('.ws-history')).toBeHidden();
+  await page.getByRole('button', { name:'混合 20 题' }).click();
+  await page.screenshot({ path:'preview/math-settings.png', fullPage:true });
+  await page.getByRole('button', { name:'生成练习', exact:true }).click();
+  await expect(page).toHaveURL(/#math\/practice$/);
+  await expect(page.locator('#ws-settings')).toBeHidden();
+  await page.locator('[data-ws-answer="0"]').fill('123');
+  await page.getByRole('link', { name:'1. 设置练习', exact:true }).click();
+  await page.getByRole('link', { name:'2. 在线作答', exact:true }).click();
+  await expect(page.locator('[data-ws-answer="0"]')).toHaveValue('123');
+  await page.getByRole('link', { name:'练习记录', exact:true }).click();
+  await expect(page.locator('.ws-history')).toBeVisible();
+  await expect(page.locator('.ws-paper')).toBeHidden();
+  await page.goBack();
+  await expect(page.locator('[data-ws-answer="0"]')).toHaveValue('123');
+  await page.setViewportSize({ width:390, height:844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+});
+
+test('代码导入完成跳转报告，明细单独显示，返回保留报告', async ({ page }) => {
+  await page.goto('/#code');
+  await expect(page.locator('.code-input')).toBeVisible();
+  await expect(page.locator('.code-report-panel')).toBeHidden();
+  await page.screenshot({ path:'preview/code-import.png', fullPage:true });
+  await page.getByRole('button', { name:'载入五语言示例项目' }).click();
+  await expect(page).toHaveURL(/#code\/report$/);
+  await expect(page.locator('.code-input')).toBeHidden();
+  await expect(page.locator('#code-summary')).toBeVisible();
+  await expect(page.locator('.code-details-grid')).toBeHidden();
+  await page.getByRole('link', { name:'文件明细', exact:true }).click();
+  await expect(page.locator('.files-page')).toBeVisible();
+  await expect(page.locator('.functions-page')).toBeHidden();
+  await expect(page.locator('#code-summary')).toBeHidden();
+  await page.getByRole('link', { name:'函数明细', exact:true }).click();
+  await expect(page.locator('.functions-page')).toBeVisible();
+  await expect(page.locator('.files-page')).toBeHidden();
+  await page.getByRole('link', { name:'2. 统计报告', exact:true }).click();
+  await expect(page.locator('.stat-total strong')).toHaveText('44');
+  await page.setViewportSize({ width:390, height:844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+});

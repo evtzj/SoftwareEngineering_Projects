@@ -39,6 +39,7 @@ test("300 题周练：双运算符、唯一性、答案和中间结果约束", (
     assert.ok(result.n >= 0 && result.n / result.d <= 100);
     assert.ok(result.intermediates.every((v) => v.d === 1 && v.n >= 0));
     assert.equal(q.expression.match(/[+−×÷]/g).length, 2);
+    assert.equal(new Set(q.expression.match(/[+−×÷]/g)).size, 2);
   }
 });
 test("一万道题：真实生成完整的不重复多步算式", () => {
