@@ -240,33 +240,65 @@ $("#editor-form").onsubmit = (event) => {
   if (saved) toast("保存好了，故事有了新的样子。");
 };
 function bindHome() {
-  bindLearning(profile.plans, next => {
-    profile.plans = next;
-    const saved = persist("growth-garden-profile", profile);
-    render(false);
-    if (saved) toast("学习计划已保存。");
-  }, () => render(false));
-  for (const [section, list, item] of [["growth", ".timeline", ".timeline-item"], ["works", ".works-grid", ".work-card"]]) {
-    const area = $("#" + section), records = [...area.querySelectorAll(item)];
+  bindLearning(
+    profile.plans,
+    (next) => {
+      profile.plans = next;
+      const saved = persist("growth-garden-profile", profile);
+      render(false);
+      if (saved) toast("学习计划已保存。");
+    },
+    () => render(false),
+  );
+  for (const [section, list, item] of [
+    ["growth", ".timeline", ".timeline-item"],
+    ["works", ".works-grid", ".work-card"],
+  ]) {
+    const area = $("#" + section),
+      records = [...area.querySelectorAll(item)];
     const controls = document.createElement("div");
     controls.className = "record-search";
-    const tags = [...new Set((section === "growth" ? profile.events : profile.works).map(x => x.tag))];
-    controls.innerHTML = `<label>搜索${section === "growth" ? "成长记录" : "作品"}<input type="search" placeholder="标题、内容或标签" maxlength="100"></label><label>标签<select><option value="">全部标签</option>${tags.map(tag => `<option value="${escape(tag)}">${escape(tag)}</option>`).join("")}</select></label><span role="status"></span>`;
+    const tags = [
+      ...new Set(
+        (section === "growth" ? profile.events : profile.works).map(
+          (x) => x.tag,
+        ),
+      ),
+    ];
+    controls.innerHTML = `<label>搜索${section === "growth" ? "成长记录" : "作品"}<input type="search" placeholder="标题、内容或标签" maxlength="100"></label><label>标签<select><option value="">全部标签</option>${tags.map((tag) => `<option value="${escape(tag)}">${escape(tag)}</option>`).join("")}</select></label><span role="status"></span>`;
     area.querySelector(list).before(controls);
-    const empty = document.createElement("p");empty.className="feature-empty";empty.hidden=true;empty.textContent="没有匹配的记录，试试其他关键词或标签。";
+    const empty = document.createElement("p");
+    empty.className = "feature-empty";
+    empty.hidden = true;
+    empty.textContent = "没有匹配的记录，试试其他关键词或标签。";
     area.querySelector(list).after(empty);
     const apply = () => {
-      const keyword=controls.querySelector("input").value.trim().toLocaleLowerCase(),tag=controls.querySelector("select").value;
-      let visible=0;
-      records.forEach((node,index) => {
-        const data=(section === "growth" ? profile.events : profile.works)[index];
-        node.hidden = !([data.title,data.text,data.tag,data.date].join(" ").toLocaleLowerCase().includes(keyword) && (!tag || data.tag===tag));
+      const keyword = controls
+          .querySelector("input")
+          .value.trim()
+          .toLocaleLowerCase(),
+        tag = controls.querySelector("select").value;
+      let visible = 0;
+      records.forEach((node, index) => {
+        const data = (section === "growth" ? profile.events : profile.works)[
+          index
+        ];
+        node.hidden = !(
+          [data.title, data.text, data.tag, data.date]
+            .join(" ")
+            .toLocaleLowerCase()
+            .includes(keyword) &&
+          (!tag || data.tag === tag)
+        );
         if (!node.hidden) visible++;
       });
-      controls.querySelector('[role="status"]').textContent=`${visible} / ${records.length} 条`;
-      empty.hidden=visible>0 || records.length===0;
+      controls.querySelector('[role="status"]').textContent =
+        `${visible} / ${records.length} 条`;
+      empty.hidden = visible > 0 || records.length === 0;
     };
-    controls.querySelector("input").oninput=apply;controls.querySelector("select").onchange=apply;apply();
+    controls.querySelector("input").oninput = apply;
+    controls.querySelector("select").onchange = apply;
+    apply();
   }
   $$("[data-add]").forEach(
     (b) => (b.onclick = () => openEditor(b.dataset.add)),
@@ -304,7 +336,8 @@ function bindHome() {
         )
       )
         throw new Error();
-      if (data.plans !== undefined && !validPlans(data.plans)) throw new Error();
+      if (data.plans !== undefined && !validPlans(data.plans))
+        throw new Error();
       profile = { ...data, plans: data.plans || [] };
       const saved = persist("growth-garden-profile", profile);
       render(false);
@@ -315,14 +348,21 @@ function bindHome() {
   };
 }
 function startView() {
-  return `<div class="start-page page-container"><div class="start-intro"><p class="eyebrow">演算室</p><h1>留一点空间，<br>给思考。</h1><p class="start-description">轻松练习，读懂代码，记录成长。</p></div><div class="launch-grid"><a class="launch-card launch-math" href="#math" aria-label="四则运算，开始练习"><div class="launch-copy"><span class="launch-kicker">练习，让思路更清晰</span><h2>四则运算</h2><p>从一道混合运算开始。</p><span class="launch-action">开始练习 <span aria-hidden="true">›</span></span></div><div class="launch-visual math-visual" aria-hidden="true"><span>＋</span><span>−</span><span>×</span><span>÷</span></div></a><a class="launch-card launch-code" href="#code" aria-label="代码量统计，开始统计"><div class="launch-copy"><span class="launch-kicker">项目规模，一目了然</span><h2>代码量统计</h2><p>导入源码，读懂每一行。</p><span class="launch-action">开始统计 <span aria-hidden="true">›</span></span></div><div class="launch-visual code-visual" aria-hidden="true"><span>{</span><i><b></b><b></b><b></b></i><span>}</span></div></a><a class="launch-card launch-profile" href="#home" aria-label="个人档案，查看档案"><div class="launch-copy"><span class="launch-kicker">每一步，都值得记住</span><h2>个人档案</h2><p>收藏成长与作品。</p><span class="launch-action">查看档案 <span aria-hidden="true">›</span></span></div><div class="launch-visual profile-visual" aria-hidden="true">${icon("leaf", 108)}</div></a></div></div>`;
+  const practice = readStorage("workshop-history", []);
+  const reports = readStorage("code-report-history", []);
+  const pending = profile.plans.filter((plan) => !plan.done).length;
+  return `<div class="start-page page-container"><div class="studio-hero"><div class="start-intro"><p class="eyebrow">YOUR EVERYDAY WORKSPACE / 演算室</p><h1>留一点空间，<br>给思考。</h1><p class="start-description">轻松练习，读懂代码，记录成长。</p><div class="intro-actions"><a class="button primary" href="#math">开始今日练习 ↗</a><a class="text-link" href="#code">打开代码工作台 →</a></div></div><div class="studio-art" aria-hidden="true"><div class="orbit"></div><span class="art-spark">✳</span><div class="notebook"><div class="notebook-top"><span>EXERCISE / 01</span><span>●</span></div><div class="notebook-equation">2 <em>+</em> 3 <em>×</em> 4</div><div class="notebook-line"></div><div class="notebook-line short"></div><span class="notebook-answer">= 14 &nbsp; ✓</span></div><div class="floating-code"><div class="code-dots"><i></i><i></i><i></i></div><pre><b>function</b> grow() {
+  learn();
+  <b>return</b> nextStep;
+}</pre></div><span class="art-caption-studio">A LITTLE PROGRESS, EVERY DAY.</span></div></div><div class="launch-grid"><a class="launch-card launch-math" href="#math" aria-label="四则运算，开始练习"><div class="launch-copy"><span class="launch-kicker">练习，让思路更清晰</span><h2>四则运算</h2><p>从一道混合运算开始。</p><span class="launch-action">开始练习 <span aria-hidden="true">›</span></span></div><div class="launch-visual math-visual" aria-hidden="true"><span>＋</span><span>−</span><span>×</span><span>÷</span></div></a><a class="launch-card launch-code" href="#code" aria-label="代码量统计，开始统计"><div class="launch-copy"><span class="launch-kicker">项目规模，一目了然</span><h2>代码量统计</h2><p>导入源码，读懂每一行。</p><span class="launch-action">开始统计 <span aria-hidden="true">›</span></span></div><div class="launch-visual code-visual" aria-hidden="true"><span>{</span><i><b></b><b></b><b></b></i><span>}</span></div></a><a class="launch-card launch-profile" href="#home" aria-label="个人档案，查看档案"><div class="launch-copy"><span class="launch-kicker">每一步，都值得记住</span><h2>个人档案</h2><p>收藏成长与作品。</p><span class="launch-action">查看档案 <span aria-hidden="true">›</span></span></div><div class="launch-visual profile-visual" aria-hidden="true">${icon("leaf", 108)}</div></a></div><div class="local-activity"><span><i class="local-dot"></i> 本机学习足迹</span><span><b>${Array.isArray(practice) ? practice.length : 0}</b> 次练习</span><span><b>${Array.isArray(reports) ? reports.length : 0}</b> 份统计报告</span><span><b>${pending}</b> 个待办计划</span><span>按自己的节奏，慢慢积累。</span></div></div>`;
 }
+
 function render(scroll = true) {
   const route = location.hash.slice(1) || "start";
   const group = route.split("/")[0];
   const page = ["code", "math", "start"].includes(group) ? group : "home";
   document.body.dataset.route = route;
-  $$("[data-nav]").forEach(a => {
+  $$("[data-nav]").forEach((a) => {
     const active = a.dataset.nav === page;
     a.classList.toggle("active", active);
     if (active) a.setAttribute("aria-current", "page");
@@ -330,7 +370,14 @@ function render(scroll = true) {
   });
   $("#edit-profile").hidden = page !== "home";
   document.title = `${page === "code" ? "代码量统计" : page === "math" ? "四则运算练习" : page === "start" ? "任务首页" : "个人档案"} · 演算室`;
-  $("#main").innerHTML = page === "start" ? startView() : page === "code" ? codeView() : page === "math" ? workshopView() : homeView();
+  $("#main").innerHTML =
+    page === "start"
+      ? startView()
+      : page === "code"
+        ? codeView()
+        : page === "math"
+          ? workshopView()
+          : homeView();
   if (page === "code") bindCode();
   else if (page === "math") bindWorkshop();
   else if (page === "home") {
@@ -338,7 +385,18 @@ function render(scroll = true) {
     const profileNav = document.createElement("nav");
     profileNav.className = "task-nav page-container";
     profileNav.setAttribute("aria-label", "个人档案页面");
-    profileNav.innerHTML = [["home", "个人简介"], ["growth", "成长记录"], ["works", "作品收藏"], ["plans", "学习计划"], ["tools", "工具入口"]].map(([key,label]) => `<a href="#${key}" ${route === key ? 'aria-current="page"' : ''}>${label}</a>`).join("");
+    profileNav.innerHTML = [
+      ["home", "个人简介"],
+      ["growth", "成长记录"],
+      ["works", "作品收藏"],
+      ["plans", "学习计划"],
+      ["tools", "工具入口"],
+    ]
+      .map(
+        ([key, label]) =>
+          `<a href="#${key}" ${route === key ? 'aria-current="page"' : ""}>${label}</a>`,
+      )
+      .join("");
     $("#main").prepend(profileNav);
   }
   if (scroll) window.scrollTo({ top: 0, behavior: "instant" });

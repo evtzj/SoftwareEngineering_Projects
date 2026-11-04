@@ -1,4 +1,9 @@
-import { createSnapshot, validSnapshots, compareSnapshots, comparisonCSV } from "./code-history.js";
+import {
+  createSnapshot,
+  validSnapshots,
+  compareSnapshots,
+  comparisonCSV,
+} from "./code-history.js";
 import { repositoryFiles } from "./github-source.js";
 import { languages, detectLanguage } from "./logic.js";
 import {
@@ -8,6 +13,7 @@ import {
   reportCSV,
 } from "./code-report.js";
 import { codeSamples } from "./code-samples.js";
+import { reportInsights, selectFunctions } from "./code-insights.js";
 
 const $ = (selector) => document.querySelector(selector);
 const escape = (value) =>
@@ -27,27 +33,78 @@ let rows = [],
   message = "",
   worker;
 let archives = [];
-try { const stored=JSON.parse(localStorage.getItem("code-report-history") || "[]"); if(validSnapshots(stored))archives=stored.slice(0,10); } catch {}
-let comparison = null, comparisonMode = "metrics";
-const metricLabels={files:"源文件数",code:"代码行",blank:"空行",comment:"注释行",total:"总行数",functionCount:"函数个数"};
-const difference = value => value === null ? "—" : value > 0 ? `+${number(value)}` : number(value);
+try {
+  const stored = JSON.parse(
+    localStorage.getItem("code-report-history") || "[]",
+  );
+  if (validSnapshots(stored)) archives = stored.slice(0, 10);
+} catch {}
+let comparison = null,
+  comparisonMode = "metrics";
+let functionQuery = "",
+  functionOrder = "source",
+  selectedFunction = null;
+const metricLabels = {
+  files: "源文件数",
+  code: "代码行",
+  blank: "空行",
+  comment: "注释行",
+  total: "总行数",
+  functionCount: "函数个数",
+};
+const difference = (value) =>
+  value === null ? "—" : value > 0 ? `+${number(value)}` : number(value);
 function archiveView() {
-  const comparing=location.hash === "#code/compare";
-  return `<section class="feature-surface code-archive"><div class="feature-title"><div><h2>${comparing ? "版本对比" : "报告历史"}</h2><p>${comparing ? "选择两份报告，看看项目发生了哪些变化。" : "保存最多 10 份完整报告，刷新后仍可查看。"}</p></div></div><nav class="archive-switch" aria-label="报告历史功能"><a href="#code/history" ${!comparing ? 'aria-current="page"' : ''}>历史报告</a><a href="#code/compare" ${comparing ? 'aria-current="page"' : ''}>版本对比</a></nav><div class="archive-list">${archives.map(s=>`<article class="archive-row"><div><h3>${escape(s.name)}</h3><p>${escape(new Date(s.date).toLocaleString('zh-CN'))} · ${number(s.report.total.files)} 个文件 · ${number(s.report.total.total)} 行</p></div><div class="feature-actions"><button class="text-link" data-archive-open="${escape(s.id)}">打开报告</button><button class="text-link" data-archive-delete="${escape(s.id)}" aria-label="删除报告：${escape(s.name)}">删除</button></div></article>`).join('') || '<div class="feature-empty">还没有保存报告。完成一次统计后，在报告页点击“保存到历史”。</div>'}</div>${archives.length>=2 ? `<form id="compare-form"><div class="feature-fields"><label>较早报告<select id="compare-before">${archives.map((s,i)=>`<option value="${escape(s.id)}" ${i===1?'selected':''}>${escape(s.name)}</option>`).join('')}</select></label><label>较新报告<select id="compare-after">${archives.map(s=>`<option value="${escape(s.id)}">${escape(s.name)}</option>`).join('')}</select></label></div><button class="button primary" type="submit">对比报告</button></form>` : ''}<p id="compare-status" role="status"></p><div id="code-comparison">${comparisonView()}</div>${comparing && archives.length<2 ? '<div class="feature-empty">至少保存两份报告后，即可比较指标变化。</div>' : ''}<p class="feature-footnote">报告保存在当前浏览器，包含文件与函数明细。变化表示指标增减，不等同于工作量或代码质量。</p></section>`;
+  const comparing = location.hash === "#code/compare";
+  return `<section class="feature-surface code-archive"><div class="feature-title"><div><h2>${comparing ? "版本对比" : "报告历史"}</h2><p>${comparing ? "选择两份报告，看看项目发生了哪些变化。" : "保存最多 10 份完整报告，刷新后仍可查看。"}</p></div></div><nav class="archive-switch" aria-label="报告历史功能"><a href="#code/history" ${!comparing ? 'aria-current="page"' : ""}>历史报告</a><a href="#code/compare" ${comparing ? 'aria-current="page"' : ""}>版本对比</a></nav><div class="archive-list">${archives.map((s) => `<article class="archive-row"><div><h3>${escape(s.name)}</h3><p>${escape(new Date(s.date).toLocaleString("zh-CN"))} · ${number(s.report.total.files)} 个文件 · ${number(s.report.total.total)} 行</p></div><div class="feature-actions"><button class="text-link" data-archive-open="${escape(s.id)}">打开报告</button><button class="text-link" data-archive-delete="${escape(s.id)}" aria-label="删除报告：${escape(s.name)}">删除</button></div></article>`).join("") || '<div class="feature-empty">还没有保存报告。完成一次统计后，在报告页点击“保存到历史”。</div>'}</div>${archives.length >= 2 ? `<form id="compare-form"><div class="feature-fields"><label>较早报告<select id="compare-before">${archives.map((s, i) => `<option value="${escape(s.id)}" ${i === 1 ? "selected" : ""}>${escape(s.name)}</option>`).join("")}</select></label><label>较新报告<select id="compare-after">${archives.map((s) => `<option value="${escape(s.id)}">${escape(s.name)}</option>`).join("")}</select></label></div><button class="button primary" type="submit">对比报告</button></form>` : ""}<p id="compare-status" role="status"></p><div id="code-comparison">${comparisonView()}</div>${comparing && archives.length < 2 ? '<div class="feature-empty">至少保存两份报告后，即可比较指标变化。</div>' : ""}<p class="feature-footnote">报告保存在当前浏览器，包含文件与函数明细。变化表示指标增减，不等同于工作量或代码质量。</p></section>`;
 }
 function comparisonView() {
-  if(!comparison)return '';
-  const metrics=table([['label','指标'],['before','原值'],['after','新值'],['change','变化']],comparison.metrics.map(r=>({...r,label:metricLabels[r.key],change:difference(r.delta)})));
-  const byLanguage=table([['language','语言'],['before','原代码行'],['after','新代码行'],['change','代码行变化'],['functions','函数数变化']],comparison.languages.map(r=>({...r,change:difference(r.delta),functions:difference(r.functionDelta)})));
-  return `<div class="feature-title"><div><h2>统计变化</h2><p>${escape(comparison.before)} → ${escape(comparison.after)}</p></div><button class="button outline small" id="download-comparison">导出对比 CSV</button></div><div class="filter-group comparison-filter" role="group" aria-label="对比维度"><button data-comparison-mode="metrics" aria-pressed="${comparisonMode==='metrics'}">总体变化</button><button data-comparison-mode="languages" aria-pressed="${comparisonMode==='languages'}">按语言比较</button></div>${comparisonMode==='metrics' ? metrics : byLanguage}<p class="feature-footnote">函数指标不可用时显示“—”，不按 0 计算变化。</p>`;
+  if (!comparison) return "";
+  const metrics = table(
+    [
+      ["label", "指标"],
+      ["before", "原值"],
+      ["after", "新值"],
+      ["change", "变化"],
+    ],
+    comparison.metrics.map((r) => ({
+      ...r,
+      label: metricLabels[r.key],
+      change: difference(r.delta),
+    })),
+  );
+  const byLanguage = table(
+    [
+      ["language", "语言"],
+      ["before", "原代码行"],
+      ["after", "新代码行"],
+      ["change", "代码行变化"],
+      ["functions", "函数数变化"],
+    ],
+    comparison.languages.map((r) => ({
+      ...r,
+      change: difference(r.delta),
+      functions: difference(r.functionDelta),
+    })),
+  );
+  return `<div class="feature-title"><div><h2>统计变化</h2><p>${escape(comparison.before)} → ${escape(comparison.after)}</p></div><button class="button outline small" id="download-comparison">导出对比 CSV</button></div><div class="filter-group comparison-filter" role="group" aria-label="对比维度"><button data-comparison-mode="metrics" aria-pressed="${comparisonMode === "metrics"}">总体变化</button><button data-comparison-mode="languages" aria-pressed="${comparisonMode === "languages"}">按语言比较</button></div>${comparisonMode === "metrics" ? metrics : byLanguage}<p class="feature-footnote">函数指标不可用时显示“—”，不按 0 计算变化。</p>`;
 }
 function storeArchives(next) {
-  try { localStorage.setItem("code-report-history",JSON.stringify(next));archives=next;return true; }
-  catch { setStatus("浏览器空间不足或存储不可用，报告历史未能更新。请先导出报告备份。");return false; }
+  try {
+    localStorage.setItem("code-report-history", JSON.stringify(next));
+    archives = next;
+    return true;
+  } catch {
+    setStatus(
+      "浏览器空间不足或存储不可用，报告历史未能更新。请先导出报告备份。",
+    );
+    return false;
+  }
 }
 function redrawCode() {
-  if(!$(".code-page"))return;
-  $("#main").innerHTML=codeView();bindCode();
+  if (!$(".code-page")) return;
+  $("#main").innerHTML = codeView();
+  bindCode();
 }
 function analyze(input) {
   worker ??= new Worker(new URL("./code-worker.js", import.meta.url), {
@@ -87,13 +144,27 @@ function toggleBusy(value) {
     "count-repository",
     "save-snapshot",
   ])
-    if ($("#" + id)) $("#" + id).disabled = value || (id === "save-snapshot" && !rows.length);
+    if ($("#" + id))
+      $("#" + id).disabled = value || (id === "save-snapshot" && !rows.length);
 }
 export function codeView() {
   const route = location.hash.slice(1);
   return `<div class="page-container code-page"><div class="breadcrumb"><a href="#start">首页</a><span>/</span><span>代码统计</span></div>
     <div class="tool-page-heading"><div><span class="eyebrow">让每一行，都有迹可循</span><h1>代码统计</h1><p>按语言整理代码规模，查看函数长度，导出一份完整报告。</p></div></div>
-    <nav class="task-nav" aria-label="代码统计页面">${[["code", "1. 导入源码"], ["code/report", "2. 统计报告"], ["code/files", "文件明细"], ["code/functions", "函数明细"], ["code/history", "历史与对比"]].map(([key,label]) => `<a href="#${key}" ${(route === key || (key === "code/history" && route === "code/compare")) ? 'aria-current="page"' : ''}>${label}</a>`).join("")}</nav><p class="report-status" role="status">${escape(message)}</p><div class="code-workspace"><section class="panel code-input"><div class="panel-title"><h2>导入源码</h2></div>
+    <nav class="task-nav" aria-label="代码统计页面">${[
+      ["code", "1. 导入源码"],
+      ["code/report", "2. 统计报告"],
+      ["code/files", "文件明细"],
+      ["code/functions", "函数明细"],
+      ["code/history", "历史与对比"],
+    ]
+      .map(
+        ([key, label]) =>
+          `<a href="#${key}" ${route === key || (key === "code/history" && route === "code/compare") ? 'aria-current="page"' : ""}>${label}</a>`,
+      )
+      .join(
+        "",
+      )}</nav><p class="report-status" role="status">${escape(message)}</p><div class="code-workspace"><section class="panel code-input"><div class="panel-title"><h2>导入源码</h2></div>
       <div class="dropzone" id="dropzone"><span class="source-mark">&lt; / &gt;</span><h3>选择文件或整个项目</h3><p>也可以将代码文件拖到这里</p><div class="upload-buttons"><button class="button primary small" id="choose-files">选择文件</button><button class="button outline small" id="choose-folder">选择文件夹</button></div><small>C / C++ / JAVA / PYTHON / C# / JS / TS 等</small><input type="file" id="code-files" multiple hidden accept="${Object.values(
         languages,
       )
@@ -112,8 +183,8 @@ export function codeView() {
         )}</select><button class="text-link" id="load-sample">填入示例</button></div><textarea id="paste-code" rows="8" spellcheck="false" placeholder="在这里粘贴代码…" aria-label="粘贴代码"></textarea><button class="button primary small" id="count-paste">统计这段代码 ↗</button></details>
       <p class="source-note">本地源码只在浏览器内读取；仓库统计需连接 GitHub 与 jsDelivr。自动跳过依赖目录、构建输出和不支持的文件。</p><div id="code-status" class="status-message" role="status" aria-live="polite">${escape(message)}</div></section>
       <section class="panel code-overview"><div class="panel-title"><h2>统计概览</h2><button class="text-link" id="clear-code">清空</button></div><div id="code-overview"></div></section></div>
-    <section class="panel code-report-panel"><div class="report-heading"><div><span class="eyebrow">ANALYSIS REPORT</span><h2>语言汇总</h2></div><div class="report-exports"><button class="button outline small" data-export="csv" id="export-code">导出 CSV</button><button class="button outline small" data-export="json">导出 JSON</button><button class="button primary small" data-export="xlsx">导出 Excel</button></div></div><div class="snapshot-save"><label>报告名称<input id="snapshot-name" maxlength="80" placeholder="例如：项目初版"></label><button class="button outline small" id="save-snapshot">保存到历史</button></div><p class="report-caption">最大值、最小值、均值和中位数：函数的非空白行数，单位为行。窄屏下可横向滚动表格。</p><div id="code-summary"></div>
-    <div class="code-details-grid"><div class="files-page"><h3>文件明细</h3><div id="code-files-table"></div></div><div class="functions-page"><h3>函数明细</h3><div id="code-functions-table"></div></div></div></section>
+    <section class="panel code-report-panel"><div class="report-heading"><div><span class="eyebrow">ANALYSIS REPORT</span><h2>语言汇总</h2></div><div class="report-exports"><button class="button outline small" data-export="csv" id="export-code">导出 CSV</button><button class="button outline small" data-export="json">导出 JSON</button><button class="button primary small" data-export="xlsx">导出 Excel</button></div></div><div class="snapshot-save"><label>报告名称<input id="snapshot-name" maxlength="80" placeholder="例如：项目初版"></label><button class="button outline small" id="save-snapshot">保存到历史</button></div><p class="report-caption">最大值、最小值、均值和中位数：函数的非空白行数，单位为行。窄屏下可横向滚动表格。</p><div id="code-summary"></div><div id="code-insights"></div>
+    <div class="code-details-grid"><div class="files-page"><h3>文件明细</h3><div id="code-files-table"></div></div><div class="functions-page"><h3>函数明细</h3><div class="function-toolbar"><label>搜索文件或函数<input id="function-search" value="${escape(functionQuery)}" placeholder="例如 main 或 src/"></label><label>排列方式<select id="function-order"><option value="source" ${functionOrder === "source" ? "selected" : ""}>按源码顺序</option><option value="length" ${functionOrder === "length" ? "selected" : ""}>按长度降序</option></select></label><span id="function-count"></span></div><div id="function-location" class="function-location"></div><div id="code-functions-table"></div></div></div></section>
     ${archiveView()}<details class="code-policy"><summary>统计口径与实现思路</summary><dl>${Object.entries(
       metricPolicy,
     )
@@ -127,6 +198,46 @@ export function codeView() {
 }
 function table(columns, items, className = "") {
   return `<div class="table-scroll ${className}"><table><thead><tr>${columns.map((c) => `<th scope="col">${escape(c[1])}</th>`).join("")}</tr></thead><tbody>${items.map((item) => `<tr>${columns.map(([key]) => `<td>${typeof item[key] === "number" || item[key] === null ? number(item[key]) : escape(item[key])}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+}
+function insightsView(report) {
+  if (!report.files.length) return "";
+  const insights = reportInsights(report),
+    longest = insights.longest[0]?.length || 1;
+  return `<div class="report-insights"><section class="insight-panel"><div class="insight-heading"><span>01 / COMPOSITION</span><h3>代码写在哪些语言里</h3><p>按代码行数占比，排除注释与空行。</p></div><div class="language-bars">${insights.languages.map((row, i) => `<div class="insight-language"><div><b><i class="language-dot tone-${i % 5}"></i>${escape(row.name)}</b><span>${number(row.code)} 行 <small>· ${row.percent}%</small></span></div><div class="insight-track"><span class="tone-${i % 5}" style="width:${row.percent}%"></span></div></div>`).join("")}</div></section><section class="insight-panel"><div class="insight-heading"><span>02 / FUNCTION MAP</span><h3>从较长的函数看起</h3><p>点击定位定义位置；长度不计算空行。</p></div><div class="function-bars">${insights.longest.map((fn, i) => `<button class="function-bar" data-locate-function="${i}" aria-label="定位函数 ${escape(fn.name)}"><span class="function-bar-label"><b>${escape(fn.name)}</b><strong>${fn.length}<small> 行</small></strong></span><span class="insight-track"><span style="width:${(fn.length / longest) * 100}%"></span></span><small>${escape(fn.file)} : ${fn.startLine}–${fn.endLine}</small></button>`).join("") || '<p class="empty-inline">暂无完整解析的函数。</p>'}</div>${insights.incomplete ? `<p class="insight-note">${insights.incomplete} 个文件的函数解析不完整，图中仅展示完整解析的函数，见文件明细。</p>` : '<p class="insight-note">长度用于理解规模，可结合函数职责进一步阅读。</p>'}</section></div>`;
+}
+function renderFunctions(report) {
+  const functions = selectFunctions(
+    report.functions,
+    functionQuery,
+    functionOrder,
+  ).filter(
+    (fn) =>
+      !selectedFunction ||
+      (fn.file === selectedFunction.file &&
+        fn.startLine === selectedFunction.startLine &&
+        fn.name === selectedFunction.name),
+  );
+  $("#function-count").textContent =
+    `${functions.length} / ${report.functions.length} 个函数`;
+  $("#function-location").innerHTML = selectedFunction
+    ? `<span>已定位 ${escape(selectedFunction.name)} · ${escape(selectedFunction.file)} : ${selectedFunction.startLine}</span><button class="text-link" id="clear-function-location">查看全部函数</button>`
+    : "";
+  $("#clear-function-location")?.addEventListener("click", () => {
+    selectedFunction = null;
+    renderFunctions(report);
+  });
+  $("#code-functions-table").innerHTML = functions.length
+    ? table(
+        [
+          ["file", "文件"],
+          ["name", "函数"],
+          ["startLine", "起始行"],
+          ["endLine", "结束行"],
+          ["length", "非空白行数"],
+        ],
+        functions,
+      )
+    : '<p class="empty-inline">没有符合条件的函数。</p>';
 }
 function renderResults() {
   if (!$("#code-summary")) return;
@@ -151,6 +262,16 @@ function renderResults() {
     [...report.summary, report.total],
     "summary-scroll",
   );
+  $("#code-insights").innerHTML = insightsView(report);
+  document.querySelectorAll("[data-locate-function]").forEach(
+    (button) =>
+      (button.onclick = () => {
+        selectedFunction =
+          reportInsights(report).longest[Number(button.dataset.locateFunction)];
+        functionQuery = "";
+        location.hash = "code/functions";
+      }),
+  );
   $("#code-files-table").innerHTML = rows.length
     ? table(
         [
@@ -171,18 +292,16 @@ function renderResults() {
         })),
       )
     : '<p class="empty-inline">尚未导入源码。</p>';
-  $("#code-functions-table").innerHTML = report.functions.length
-    ? table(
-        [
-          ["file", "文件"],
-          ["name", "函数"],
-          ["startLine", "起始行"],
-          ["endLine", "结束行"],
-          ["length", "非空白行数"],
-        ],
-        report.functions,
-      )
-    : '<p class="empty-inline">暂无可列出的函数定义。</p>';
+  renderFunctions(report);
+  $("#function-search").oninput = (event) => {
+    functionQuery = event.target.value;
+    selectedFunction = null;
+    renderFunctions(report);
+  };
+  $("#function-order").onchange = (event) => {
+    functionOrder = event.target.value;
+    renderFunctions(report);
+  };
   $("#save-snapshot").disabled = !rows.length || busy;
   document
     .querySelectorAll("[data-export]")
@@ -238,7 +357,10 @@ async function processFiles(files, acquired = false) {
       }
     }
     rows = next.sort((a, b) => a.name.localeCompare(b.name));
-    if (next.length && location.hash.startsWith("#code")) location.hash = "code/report";
+    selectedFunction = null;
+    functionQuery = "";
+    if (next.length && location.hash.startsWith("#code"))
+      location.hash = "code/report";
     renderResults();
     setStatus(
       `已统计 ${next.length} 个文件${skipped ? `，跳过 ${skipped} 个文件` : ""}${failed ? `，failed ${failed} 个文件读取或分析失败。${errors.slice(0, 3).join("；")}` : ""}。`,
@@ -250,45 +372,75 @@ async function processFiles(files, acquired = false) {
 const simpleSample =
   '// 一个小小的问候\nfunction greet(name) {\n  /* 把想法变成现实 */\n  const message = "Hello, " + name;\n  console.log(message);\n}\n\ngreet("world");\n';
 export function bindCode() {
-  $("#save-snapshot").onclick=()=>{
-    if(busy || !rows.length)return;
-    const name=$("#snapshot-name").value.trim() || `统计报告 ${archives.length+1}`;
-    const snapshot=createSnapshot(name,rows);
-    if(storeArchives([snapshot,...archives].slice(0,10))) {
+  $("#save-snapshot").onclick = () => {
+    if (busy || !rows.length) return;
+    const name =
+      $("#snapshot-name").value.trim() || `统计报告 ${archives.length + 1}`;
+    const snapshot = createSnapshot(name, rows);
+    if (storeArchives([snapshot, ...archives].slice(0, 10))) {
       setStatus(`已保存“${name}”，可在“历史与对比”中查看。`);
       redrawCode();
     }
   };
-  document.querySelectorAll('[data-archive-open]').forEach(b=>b.onclick=()=>{
-    if(busy)return;
-    const snapshot=archives.find(s=>s.id===b.dataset.archiveOpen);
-    if(!snapshot)return;
-    rows=structuredClone(snapshot.report.files);
-    setStatus(`已打开历史报告“${snapshot.name}”。`);
-    location.hash="code/report";redrawCode();
-  });
-  document.querySelectorAll('[data-archive-delete]').forEach(b=>b.onclick=()=>{
-    if(storeArchives(archives.filter(s=>s.id!==b.dataset.archiveDelete))) {comparison=null;redrawCode();}
-  });
-  $("#compare-form")?.addEventListener('submit',event=>{
+  document.querySelectorAll("[data-archive-open]").forEach(
+    (b) =>
+      (b.onclick = () => {
+        if (busy) return;
+        const snapshot = archives.find((s) => s.id === b.dataset.archiveOpen);
+        if (!snapshot) return;
+        rows = structuredClone(snapshot.report.files);
+        selectedFunction = null;
+        functionQuery = "";
+        setStatus(`已打开历史报告“${snapshot.name}”。`);
+        location.hash = "code/report";
+        redrawCode();
+      }),
+  );
+  document.querySelectorAll("[data-archive-delete]").forEach(
+    (b) =>
+      (b.onclick = () => {
+        if (
+          storeArchives(
+            archives.filter((s) => s.id !== b.dataset.archiveDelete),
+          )
+        ) {
+          comparison = null;
+          redrawCode();
+        }
+      }),
+  );
+  $("#compare-form")?.addEventListener("submit", (event) => {
     event.preventDefault();
     try {
-      const before=archives.find(s=>s.id===$("#compare-before").value),after=archives.find(s=>s.id===$("#compare-after").value);
-      comparison=compareSnapshots(before,after);
-      $("#compare-status").textContent="";
-      $("#code-comparison").innerHTML=comparisonView();
+      const before = archives.find((s) => s.id === $("#compare-before").value),
+        after = archives.find((s) => s.id === $("#compare-after").value);
+      comparison = compareSnapshots(before, after);
+      $("#compare-status").textContent = "";
+      $("#code-comparison").innerHTML = comparisonView();
       bindComparison();
-    } catch(error) {$("#compare-status").textContent=error.message;}
+    } catch (error) {
+      $("#compare-status").textContent = error.message;
+    }
   });
   function bindComparison() {
-    $("#download-comparison")?.addEventListener('click',()=>download(comparisonCSV(comparison),"代码统计对比.csv","text/csv;charset=utf-8"));
-    document.querySelectorAll('[data-comparison-mode]').forEach(button=>button.onclick=()=>{
-      comparisonMode=button.dataset.comparisonMode;
-      $("#code-comparison").innerHTML=comparisonView();bindComparison();
-    });
+    $("#download-comparison")?.addEventListener("click", () =>
+      download(
+        comparisonCSV(comparison),
+        "代码统计对比.csv",
+        "text/csv;charset=utf-8",
+      ),
+    );
+    document.querySelectorAll("[data-comparison-mode]").forEach(
+      (button) =>
+        (button.onclick = () => {
+          comparisonMode = button.dataset.comparisonMode;
+          $("#code-comparison").innerHTML = comparisonView();
+          bindComparison();
+        }),
+    );
   }
   bindComparison();
-  $("#repository-form").onsubmit = async event => {
+  $("#repository-form").onsubmit = async (event) => {
     event.preventDefault();
     if (busy) return;
     const value = $("#repository-url").value;
@@ -298,10 +450,18 @@ export function bindCode() {
     $("#repository-token").value = "";
     toggleBusy(true);
     try {
-      const files = await repositoryFiles(value, { token, branch, directory, status: setStatus });
+      const files = await repositoryFiles(value, {
+        token,
+        branch,
+        directory,
+        status: setStatus,
+      });
       await processFiles(files, true);
-    } catch (error) { setStatus(error.message); }
-    finally { toggleBusy(false); }
+    } catch (error) {
+      setStatus(error.message);
+    } finally {
+      toggleBusy(false);
+    }
   };
   $("#choose-files").onclick = () => $("#code-files").click();
   $("#choose-folder").onclick = () => $("#code-folder").click();
@@ -344,6 +504,8 @@ export function bindCode() {
   $("#clear-code").onclick = () => {
     if (busy) return;
     rows = [];
+    selectedFunction = null;
+    functionQuery = "";
     renderResults();
     setStatus("");
     location.hash = "code";

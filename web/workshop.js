@@ -1,5 +1,6 @@
 import { updateMistakes, mistakeQuestions } from "./practice-library.js";
 import { gradeQuestions } from "./arithmetic.js";
+import { explainQuestion, mistakeBreakdown } from "./practice-insights.js";
 const $ = (s) => document.querySelector(s);
 const esc = (s) =>
   String(s ?? "").replace(
@@ -44,13 +45,56 @@ let settings = { ...DEFAULT, ...load("workshop-settings", {}) },
   timer = null;
 const PAGE_SIZE = 8;
 let mistakes = load("workshop-mistakes", []);
-if (!Array.isArray(mistakes)) mistakes=[];
-mistakes=mistakes.filter(q=>q && typeof q.expression==="string" && (typeof q.answer==="string" || typeof q.answer==="number") && typeof q.lastReviewed==="string" && typeof q.given==="string" && Number.isInteger(q.misses) && typeof q.mastered==="boolean" && q.settings);
-let showMastered=false, libraryPage=0;
+if (!Array.isArray(mistakes)) mistakes = [];
+mistakes = mistakes.filter(
+  (q) =>
+    q &&
+    typeof q.expression === "string" &&
+    (typeof q.answer === "string" || typeof q.answer === "number") &&
+    typeof q.lastReviewed === "string" &&
+    typeof q.given === "string" &&
+    Number.isInteger(q.misses) &&
+    typeof q.mastered === "boolean" &&
+    q.settings,
+);
+let showMastered = false,
+  libraryPage = 0;
 function mistakeView() {
-  const filtered=mistakes.map((q,index)=>({...q,index})).filter(q=>showMastered || !q.mastered);
-  libraryPage=Math.max(0,Math.min(libraryPage,Math.ceil(filtered.length/20)-1));
-  return `<section class="feature-surface mistakes-panel"><div class="feature-title"><div><h2>错题本</h2><p>${mistakes.filter(q=>!q.mastered).length} 道待巩固 · ${mistakes.filter(q=>q.mastered).length} 道已掌握</p></div><button class="button primary" id="mistakes-practice" ${busy || !filtered.length ? 'disabled' : ''}>练习${showMastered ? '全部错题' : '待巩固题目'}</button></div><label class="feature-checkbox"><input id="mistakes-mastered" type="checkbox" ${showMastered ? 'checked' : ''}>显示已掌握题目</label><div class="mistakes-list">${filtered.slice(libraryPage*20,libraryPage*20+20).map(q=>`<article class="mistake-row"><div><h3>${esc(q.expression)} = ?</h3><p>上次作答 ${esc(q.given)} · 答案 ${esc(q.answer)} · 累计答错 ${q.misses} 次</p><small>${q.mastered ? '已掌握' : '待巩固'} · ${esc(new Date(q.lastReviewed).toLocaleDateString('zh-CN'))}</small></div><button class="text-link" data-mistake-delete="${q.index}" ${busy ? 'disabled' : ''} aria-label="移除错题：${esc(q.expression)}">移除</button></article>`).join('') || '<div class="feature-empty">答错的已作答题会自动收录在这里，未答题不会加入。</div>'}</div><div class="ws-pagination"><button id="mistakes-prev" ${libraryPage===0 ? 'disabled' : ''}>上一组</button><span>${filtered.length ? libraryPage+1 : 0} / ${Math.ceil(filtered.length/20)}</span><button id="mistakes-next" ${(libraryPage+1)*20>=filtered.length ? 'disabled' : ''}>下一组</button></div><p class="feature-footnote">自动保留最近 500 道错题；重练答对后标记为已掌握。数据保存在当前浏览器。</p><p id="mistakes-status" role="status"></p></section>`;
+  const filtered = mistakes
+    .map((q, index) => ({ ...q, index }))
+    .filter((q) => showMastered || !q.mastered);
+  libraryPage = Math.max(
+    0,
+    Math.min(libraryPage, Math.ceil(filtered.length / 20) - 1),
+  );
+  return `<section class="feature-surface mistakes-panel"><div class="feature-title"><div><h2>错题本</h2><p>${mistakes.filter((q) => !q.mastered).length} 道待巩固 · ${mistakes.filter((q) => q.mastered).length} 道已掌握</p></div><button class="button primary" id="mistakes-practice" ${busy || !filtered.length ? "disabled" : ""}>练习${showMastered ? "全部错题" : "待巩固题目"}</button></div><div class="mistake-insights" aria-label="待巩固题目运算分布">${mistakeBreakdown(
+    mistakes,
+  )
+    .map(
+      (item) =>
+        `<div><span>${item.label}</span><strong>${item.count}</strong><small>道待巩固</small></div>`,
+    )
+    .join(
+      "",
+    )}</div><p class="insight-note">一道混合题可以包含多种运算，计数会重叠。</p><label class="feature-checkbox"><input id="mistakes-mastered" type="checkbox" ${showMastered ? "checked" : ""}>显示已掌握题目</label><div class="mistakes-list">${
+    filtered
+      .slice(libraryPage * 20, libraryPage * 20 + 20)
+      .map(
+        (q) =>
+          `<article class="mistake-row"><div><h3>${esc(q.expression)} = ?</h3><p>上次作答 ${esc(q.given)} · 答案 ${esc(q.answer)} · 累计答错 ${q.misses} 次</p><small>${q.mastered ? "已掌握" : "待巩固"} · ${esc(new Date(q.lastReviewed).toLocaleDateString("zh-CN"))}</small>${explanationView(q)}</div><button class="text-link" data-mistake-delete="${q.index}" ${busy ? "disabled" : ""} aria-label="移除错题：${esc(q.expression)}">移除</button></article>`,
+      )
+      .join("") ||
+    '<div class="feature-empty">答错的已作答题会自动收录在这里，未答题不会加入。</div>'
+  }</div><div class="ws-pagination"><button id="mistakes-prev" ${libraryPage === 0 ? "disabled" : ""}>上一组</button><span>${filtered.length ? libraryPage + 1 : 0} / ${Math.ceil(filtered.length / 20)}</span><button id="mistakes-next" ${(libraryPage + 1) * 20 >= filtered.length ? "disabled" : ""}>下一组</button></div><p class="feature-footnote">自动保留最近 500 道错题；重练答对后标记为已掌握。数据保存在当前浏览器。</p><p id="mistakes-status" role="status"></p></section>`;
+}
+function explanationView(question) {
+  return `<details class="solution"><summary>查看计算过程</summary><ol>${explainQuestion(
+    question,
+  )
+    .map((step) => `<li>${esc(step)}</li>`)
+    .join(
+      "",
+    )}</ol><p>先括号，再乘除，最后加减；同级运算从左往右。</p></details>`;
 }
 const option = (value, label, current) =>
   `<option value="${value}" ${value === current ? "selected" : ""}>${label}</option>`;
@@ -59,7 +103,7 @@ function field(label, html) {
 }
 export function workshopView() {
   const route = location.hash.slice(1) || "math";
-  return `<div class="workshop"><div class="ws-masthead"><div><p class="ws-overline">为每一次进步</p><h1>四则混合运算</h1></div><div class="ws-date">多步计算 · 在线批改 · 打印练习<br><b>ARITHMETIC WORKSHOP</b></div></div><nav class="task-nav" aria-label="运算练习页面"><a href="#math" ${route === "math" ? 'aria-current="page"' : ''}>1. 设置练习</a><a href="#math/practice" ${route === "math/practice" ? 'aria-current="page"' : ''}>2. 在线作答</a><a href="#math/history" ${route === "math/history" ? 'aria-current="page"' : ''}>练习记录</a><a href="#math/mistakes" ${route === "math/mistakes" ? 'aria-current="page"' : ''}>错题本</a></nav><div class="ws-layout"><aside class="ws-sidebar"><div class="ws-section-title"><span>01</span><h2>编排练习</h2><button id="ws-reset" type="button">恢复默认</button></div><form id="ws-settings"><div class="ws-presets"><button type="button" data-preset="week">每周 300 题</button><button type="button" data-preset="quick">混合 20 题</button></div><div class="ws-fields">${field("题目数量", `<input required type="number" name="count" min="1" max="10000" value="${settings.count}">`)}${field("数字与答案上限", `<input required type="number" name="max" min="2" max="1000" value="${settings.max}">`)}</div><fieldset class="ws-ops"><legend>运算种类</legend>${[
+  return `<div class="workshop"><div class="ws-masthead"><div><p class="ws-overline">为每一次进步</p><h1>四则混合运算</h1></div><div class="ws-date">多步计算 · 在线批改 · 打印练习<br><b>ARITHMETIC WORKSHOP</b></div></div><nav class="task-nav" aria-label="运算练习页面"><a href="#math" ${route === "math" ? 'aria-current="page"' : ""}>1. 设置练习</a><a href="#math/practice" ${route === "math/practice" ? 'aria-current="page"' : ""}>2. 在线作答</a><a href="#math/history" ${route === "math/history" ? 'aria-current="page"' : ""}>练习记录</a><a href="#math/mistakes" ${route === "math/mistakes" ? 'aria-current="page"' : ""}>错题本</a></nav><div class="ws-layout"><aside class="ws-sidebar"><div class="ws-section-title"><span>01</span><h2>编排练习</h2><button id="ws-reset" type="button">恢复默认</button></div><form id="ws-settings"><div class="ws-presets"><button type="button" data-preset="week">每周 300 题</button><button type="button" data-preset="quick">混合 20 题</button></div><div class="ws-fields">${field("题目数量", `<input required type="number" name="count" min="1" max="10000" value="${settings.count}">`)}${field("数字与答案上限", `<input required type="number" name="max" min="2" max="1000" value="${settings.max}">`)}</div><fieldset class="ws-ops"><legend>运算种类</legend>${[
     ["+", "＋", "加"],
     ["-", "−", "减"],
     ["*", "×", "乘"],
@@ -138,21 +182,50 @@ function status(text) {
   if ($("#ws-paper-status")) $("#ws-paper-status").textContent = text;
 }
 export function bindWorkshop() {
-  $("#mistakes-mastered").onchange=e=>{showMastered=e.target.checked;libraryPage=0;redraw();};
-  $("#mistakes-prev").onclick=()=>{libraryPage--;redraw();};
-  $("#mistakes-next").onclick=()=>{libraryPage++;redraw();};
-  document.querySelectorAll('[data-mistake-delete]').forEach(b=>b.onclick=()=>{
-    if(busy)return;
-    mistakes=mistakes.filter((q,index)=>index!==Number(b.dataset.mistakeDelete));
-    const saved=save("workshop-mistakes",mistakes);redraw();
-    if(!saved)$("#mistakes-status").textContent="浏览器未能保存删除操作。";
-  });
-  $("#mistakes-practice").onclick=()=>{
-    if(busy)return;
-    const questions=mistakeQuestions(mistakes,showMastered);
-    if(!questions.length)return;
-    session={settings:{...DEFAULT},questions,answers:[],grade:null,started:Date.now(),elapsed:null,include:false,retry:true,library:true};
-    page=0;location.hash="math/practice";redraw();
+  $("#mistakes-mastered").onchange = (e) => {
+    showMastered = e.target.checked;
+    libraryPage = 0;
+    redraw();
+  };
+  $("#mistakes-prev").onclick = () => {
+    libraryPage--;
+    redraw();
+  };
+  $("#mistakes-next").onclick = () => {
+    libraryPage++;
+    redraw();
+  };
+  document.querySelectorAll("[data-mistake-delete]").forEach(
+    (b) =>
+      (b.onclick = () => {
+        if (busy) return;
+        mistakes = mistakes.filter(
+          (q, index) => index !== Number(b.dataset.mistakeDelete),
+        );
+        const saved = save("workshop-mistakes", mistakes);
+        redraw();
+        if (!saved)
+          $("#mistakes-status").textContent = "浏览器未能保存删除操作。";
+      }),
+  );
+  $("#mistakes-practice").onclick = () => {
+    if (busy) return;
+    const questions = mistakeQuestions(mistakes, showMastered);
+    if (!questions.length) return;
+    session = {
+      settings: { ...DEFAULT },
+      questions,
+      answers: [],
+      grade: null,
+      started: Date.now(),
+      elapsed: null,
+      include: false,
+      retry: true,
+      library: true,
+    };
+    page = 0;
+    location.hash = "math/practice";
+    redraw();
   };
   clearInterval(timer);
   if (session && !session.grade)
@@ -264,10 +337,11 @@ export function bindWorkshop() {
     });
     history = history.slice(0, 30);
     const saved = save("workshop-history", history);
-    mistakes=updateMistakes(mistakes,session.grade,session.settings);
-    const savedMistakes=save("workshop-mistakes",mistakes);
+    mistakes = updateMistakes(mistakes, session.grade, session.settings);
+    const savedMistakes = save("workshop-mistakes", mistakes);
     redraw();
-    if (!saved || !savedMistakes) status("浏览器存储不可用，成绩或错题未能保存。");
+    if (!saved || !savedMistakes)
+      status("浏览器存储不可用，成绩或错题未能保存。");
   });
   $("#ws-retry")?.addEventListener("click", () => {
     session = {
