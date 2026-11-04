@@ -113,5 +113,6 @@ test("上传源码排除空行；错误源码及空文件提供明确状态", as
   await expect(page.locator(".analysis-warning")).toBeVisible();
   await expect(page.locator("#code-files-table")).toContainText("语法错误");
   await page.getByRole("button", { name: "清空", exact: true }).click();
-  await expect(page.getByRole("button", { name: "导出 JSON" })).toBeDisabled();
+  await expect(page.locator('[data-export="json"]')).toBeDisabled();
+  await expect(page).toHaveURL(/#code$/);
 });
