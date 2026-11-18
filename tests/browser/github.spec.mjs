@@ -28,7 +28,7 @@ test('仓库分支子目录、CDN 回退、failed 计数与 11 列报表', async
   await page.locator('#repository-token').fill('test-token');
   await page.locator('#count-repository').click();
   await expect(page.locator('#code-status')).toContainText('已统计 1 个文件');
-  await expect(page.locator('#code-status')).toContainText('failed 1');
+  await expect(page.locator('#code-status')).toContainText('1 个文件读取或分析失败');
   await expect(page.locator('#code-status')).toContainText('src/fail.py');
   await expect(page.locator('#code-summary thead th')).toHaveCount(11);
   await expect(page.locator('#code-summary tbody tr').last()).toContainText('SUM');

@@ -1,6 +1,7 @@
 import { learningView, bindLearning, validPlans } from "./learning.js";
 import { workshopView, bindWorkshop } from "./workshop.js";
 import { codeView, bindCode } from "./code-tool.js";
+import { practiceStats, pendingPlans } from "./activity.js";
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -347,14 +348,35 @@ function bindHome() {
     }
   };
 }
+function dashboardView(practice, reports) {
+  const stats = practiceStats(practice);
+  const draft = readStorage("workshop-session", null);
+  const questions = draft?.questions?.length || 0;
+  const answered =
+    draft?.answers?.filter((answer) => String(answer ?? "").trim()).length || 0;
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const plans = pendingPlans(profile.plans, today);
+  return `<section class="dashboard" aria-label="学习概览"><div class="dashboard-heading"><div><span class="eyebrow">MY WORKSPACE</span><h2>从这里，接着往前。</h2></div><span class="local-badge"><i class="local-dot"></i> 本机学习足迹</span></div><div class="dashboard-metrics"><a href="#math/history"><span>累计练习</span><strong>${stats.total.toLocaleString()}<small>题</small></strong><p>${stats.sessions} 次练习记录</p></a><a href="#math/mistakes"><span>累计正确率</span><strong>${stats.sessions ? stats.accuracy : "—"}<small>${stats.sessions ? "%" : ""}</small></strong><p>到错题本巩固知识</p></a><a href="#code/history"><span>保存的统计</span><strong>${reports.length}<small>份</small></strong><p>回看项目的每次变化</p></a><a href="#plans"><span>待办学习计划</span><strong>${plans.length}<small>项</small></strong><p>${plans.filter((plan) => plan.due && plan.due < today).length} 项已逾期</p></a></div><div class="dashboard-grid"><article class="dashboard-card continue-card"><div class="card-heading"><span class="eyebrow">CONTINUE / 继续学习</span>${questions ? `<span class="status-pill">${draft.graded ? "已批改" : "作答中"}</span>` : ""}</div><h3>${questions ? (draft.graded ? "回看上一次练习" : "你的练习，还在这里。") : "用 20 道题，打开今天。"}</h3><p>${questions ? `已作答 ${answered} / ${questions} 题，刷新页面也能继续。` : "先做一组混合运算，再把不熟悉的题目练明白。"}</p><a class="button primary small" href="${questions ? "#math/practice" : "#math"}">${questions ? (draft.graded ? "查看练习结果" : "继续作答") : "设置今日练习"} ${icon("arrow", 16)}</a></article><article class="dashboard-card"><div class="card-heading"><span class="eyebrow">NEXT / 接下来的事</span><a class="text-link" href="#plans">全部计划 ↗</a></div><div class="dashboard-plans">${
+    plans
+      .slice(0, 3)
+      .map(
+        (plan) =>
+          `<a href="#plans"><span class="plan-indicator ${plan.priority === "high" ? "priority" : ""}"></span><b>${escape(plan.title)}</b><small class="${plan.due && plan.due < today ? "overdue" : ""}">${plan.due ? escape(plan.due) : "未设日期"}</small></a>`,
+      )
+      .join("") ||
+    '<div class="dashboard-empty"><span>还没有待办事项</span><p>把课程、练习和项目拆成一个个小目标。</p><a class="text-link" href="#plans">添加第一个计划 →</a></div>'
+  }</div></article></div>${reports.length ? `<div class="recent-report"><span class="report-file-icon">{ }</span><div><span>最近保存的报告</span><b>${escape(reports[0].name)}</b></div><small>${reports[0].report.total.files} 个文件 · ${reports[0].report.total.code.toLocaleString()} 行代码</small><a class="text-link" href="#code/history">打开历史报告 ↗</a></div>` : ""}</section>`;
+}
 function startView() {
+  const draft = readStorage("workshop-session", null);
+  const continuing = draft?.questions?.length && !draft.graded;
   const practice = readStorage("workshop-history", []);
   const reports = readStorage("code-report-history", []);
-  const pending = profile.plans.filter((plan) => !plan.done).length;
-  return `<div class="start-page page-container"><div class="studio-hero"><div class="start-intro"><p class="eyebrow">YOUR EVERYDAY WORKSPACE / 演算室</p><h1>留一点空间，<br>给思考。</h1><p class="start-description">轻松练习，读懂代码，记录成长。</p><div class="intro-actions"><a class="button primary" href="#math">开始今日练习 ↗</a><a class="text-link" href="#code">打开代码工作台 →</a></div></div><div class="studio-art" aria-hidden="true"><div class="orbit"></div><span class="art-spark">✳</span><div class="notebook"><div class="notebook-top"><span>EXERCISE / 01</span><span>●</span></div><div class="notebook-equation">2 <em>+</em> 3 <em>×</em> 4</div><div class="notebook-line"></div><div class="notebook-line short"></div><span class="notebook-answer">= 14 &nbsp; ✓</span></div><div class="floating-code"><div class="code-dots"><i></i><i></i><i></i></div><pre><b>function</b> grow() {
+  return `<div class="start-page page-container"><div class="studio-hero"><div class="start-intro"><p class="eyebrow">YOUR EVERYDAY WORKSPACE / 演算室</p><h1>留一点空间，<br>给思考。</h1><p class="start-description">轻松练习，读懂代码，记录成长。</p><div class="intro-actions"><a class="button primary" href="${continuing ? "#math/practice" : "#math"}">${continuing ? "继续上次练习" : "开始今日练习"} ↗</a><a class="text-link" href="#code">打开代码工作台 →</a></div></div><div class="studio-art" aria-hidden="true"><div class="orbit"></div><span class="art-spark">✳</span><div class="notebook"><div class="notebook-top"><span>EXERCISE / 01</span><span>●</span></div><div class="notebook-equation">2 <em>+</em> 3 <em>×</em> 4</div><div class="notebook-line"></div><div class="notebook-line short"></div><span class="notebook-answer">= 14 &nbsp; ✓</span></div><div class="floating-code"><div class="code-dots"><i></i><i></i><i></i></div><pre><b>function</b> grow() {
   learn();
   <b>return</b> nextStep;
-}</pre></div><span class="art-caption-studio">A LITTLE PROGRESS, EVERY DAY.</span></div></div><div class="launch-grid"><a class="launch-card launch-math" href="#math" aria-label="四则运算，开始练习"><div class="launch-copy"><span class="launch-kicker">练习，让思路更清晰</span><h2>四则运算</h2><p>从一道混合运算开始。</p><span class="launch-action">开始练习 <span aria-hidden="true">›</span></span></div><div class="launch-visual math-visual" aria-hidden="true"><span>＋</span><span>−</span><span>×</span><span>÷</span></div></a><a class="launch-card launch-code" href="#code" aria-label="代码量统计，开始统计"><div class="launch-copy"><span class="launch-kicker">项目规模，一目了然</span><h2>代码量统计</h2><p>导入源码，读懂每一行。</p><span class="launch-action">开始统计 <span aria-hidden="true">›</span></span></div><div class="launch-visual code-visual" aria-hidden="true"><span>{</span><i><b></b><b></b><b></b></i><span>}</span></div></a><a class="launch-card launch-profile" href="#home" aria-label="个人档案，查看档案"><div class="launch-copy"><span class="launch-kicker">每一步，都值得记住</span><h2>个人档案</h2><p>收藏成长与作品。</p><span class="launch-action">查看档案 <span aria-hidden="true">›</span></span></div><div class="launch-visual profile-visual" aria-hidden="true">${icon("leaf", 108)}</div></a></div><div class="local-activity"><span><i class="local-dot"></i> 本机学习足迹</span><span><b>${Array.isArray(practice) ? practice.length : 0}</b> 次练习</span><span><b>${Array.isArray(reports) ? reports.length : 0}</b> 份统计报告</span><span><b>${pending}</b> 个待办计划</span><span>按自己的节奏，慢慢积累。</span></div></div>`;
+}</pre></div><span class="art-caption-studio">A LITTLE PROGRESS, EVERY DAY.</span></div></div><div class="launch-grid"><a class="launch-card launch-math" href="#math" aria-label="四则运算，开始练习"><div class="launch-copy"><span class="launch-kicker">练习，让思路更清晰</span><h2>四则运算</h2><p>从一道混合运算开始。</p><span class="launch-action">开始练习 <span aria-hidden="true">›</span></span></div><div class="launch-visual math-visual" aria-hidden="true"><span>＋</span><span>−</span><span>×</span><span>÷</span></div></a><a class="launch-card launch-code" href="#code" aria-label="代码量统计，开始统计"><div class="launch-copy"><span class="launch-kicker">项目规模，一目了然</span><h2>代码量统计</h2><p>导入源码，读懂每一行。</p><span class="launch-action">开始统计 <span aria-hidden="true">›</span></span></div><div class="launch-visual code-visual" aria-hidden="true"><span>{</span><i><b></b><b></b><b></b></i><span>}</span></div></a><a class="launch-card launch-profile" href="#home" aria-label="个人档案，查看档案"><div class="launch-copy"><span class="launch-kicker">每一步，都值得记住</span><h2>个人档案</h2><p>收藏成长与作品。</p><span class="launch-action">查看档案 <span aria-hidden="true">›</span></span></div><div class="launch-visual profile-visual" aria-hidden="true">${icon("leaf", 108)}</div></a></div>${dashboardView(Array.isArray(practice) ? practice : [], Array.isArray(reports) ? reports : [])}</div>`;
 }
 
 function render(scroll = true) {
