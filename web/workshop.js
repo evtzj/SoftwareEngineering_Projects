@@ -1,6 +1,12 @@
 import { updateMistakes, mistakeQuestions } from "./practice-library.js";
 import { gradeQuestions } from "./arithmetic.js";
 import { explainQuestion, mistakeBreakdown } from "./practice-insights.js";
+import {
+  packSession,
+  unpackSession,
+  questionState,
+} from "./practice-session.js";
+import { practiceStats } from "./activity.js";
 const $ = (s) => document.querySelector(s);
 const esc = (s) =>
   String(s ?? "").replace(
@@ -37,12 +43,14 @@ const DEFAULT = {
   spacing: 32,
 };
 let settings = { ...DEFAULT, ...load("workshop-settings", {}) },
-  session = null,
+  session = unpackSession(load("workshop-session", null)),
   history = load("workshop-history", []),
-  page = 0,
+  page = session?.page || 0,
   busy = false,
   worker = null,
-  timer = null;
+  timer = null,
+  saveTimer = null,
+  reviewFilter = "all";
 const PAGE_SIZE = 8;
 let mistakes = load("workshop-mistakes", []);
 if (!Array.isArray(mistakes)) mistakes = [];
@@ -58,11 +66,45 @@ mistakes = mistakes.filter(
     q.settings,
 );
 let showMastered = false,
-  libraryPage = 0;
-function mistakeView() {
-  const filtered = mistakes
+  libraryPage = 0,
+  mistakeOperation = "",
+  mistakeQuery = "",
+  sessionSaveMessage = "已自动保存";
+function persistSession() {
+  clearTimeout(saveTimer);
+  if (!session) return;
+  const saved = save("workshop-session", packSession(session, page));
+  sessionSaveMessage = saved ? "已自动保存" : "当前练习未能保存，请保留此页";
+  if ($("#ws-save-state")) $("#ws-save-state").textContent = sessionSaveMessage;
+}
+window.addEventListener("pagehide", persistSession);
+window.addEventListener("hashchange", () => {
+  if ($(".workshop")) persistSession();
+});
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) persistSession();
+});
+function historyView() {
+  const stats = practiceStats(history);
+  return `<section class="practice-history feature-surface"><div class="feature-title"><div><p class="eyebrow">LEARNING RECORD / 学习记录</p><h2>每一次练习，都有回响。</h2><p>保留最近 30 次成绩，复盘自己的练习节奏。</p></div><div class="feature-actions"><a class="button outline small" href="#math/mistakes">去巩固错题 ↗</a>${history.length ? '<button class="text-link" id="ws-clear">清空记录</button>' : ""}</div></div><div class="history-metrics"><div><strong>${stats.sessions}</strong><span>次练习</span></div><div><strong>${stats.total.toLocaleString()}</strong><span>道题目</span></div><div><strong>${stats.sessions ? stats.accuracy + "%" : "—"}</strong><span>累计正确率</span></div><div><strong>${Math.ceil(stats.seconds / 60)}</strong><span>分钟练习</span></div></div>${history.length ? `<div class="table-scroll"><table><thead><tr><th>练习时间</th><th>练习类型</th><th>题数</th><th>正确率</th><th>用时</th></tr></thead><tbody>${history.map((item) => `<tr><td>${esc(item.date)}</td><td><span class="status-pill">${item.retry ? "错题巩固" : "日常练习"}</span></td><td>${item.total}</td><td><b>${item.score}%</b></td><td>${item.elapsed} 秒</td></tr>`).join("")}</tbody></table></div>` : '<div class="feature-empty">还没有练习记录。<a class="text-link" href="#math">去完成第一份练习 →</a></div>'}<p class="feature-footnote">累计正确率按题量加权；重练也单独记为一次练习。</p></section>`;
+}
+function matchingMistakes() {
+  return mistakes
     .map((q, index) => ({ ...q, index }))
-    .filter((q) => showMastered || !q.mastered);
+    .filter(
+      (q) =>
+        (showMastered || !q.mastered) &&
+        (!mistakeOperation ||
+          q.expression
+            .replaceAll("×", "*")
+            .replaceAll("÷", "/")
+            .replaceAll("−", "-")
+            .includes(mistakeOperation)) &&
+        q.expression.includes(mistakeQuery.trim()),
+    );
+}
+function mistakeView() {
+  const filtered = matchingMistakes();
   libraryPage = Math.max(
     0,
     Math.min(libraryPage, Math.ceil(filtered.length / 20) - 1),
@@ -76,7 +118,20 @@ function mistakeView() {
     )
     .join(
       "",
-    )}</div><p class="insight-note">一道混合题可以包含多种运算，计数会重叠。</p><label class="feature-checkbox"><input id="mistakes-mastered" type="checkbox" ${showMastered ? "checked" : ""}>显示已掌握题目</label><div class="mistakes-list">${
+    )}</div><p class="insight-note">一道混合题可以包含多种运算，计数会重叠。</p><label class="feature-checkbox"><input id="mistakes-mastered" type="checkbox" ${showMastered ? "checked" : ""}>显示已掌握题目</label><form class="detail-toolbar mistake-toolbar" id="mistake-filter-form"><label>搜索算式<input type="search" id="mistake-search" value="${esc(mistakeQuery)}" placeholder="输入算式片段"></label><label>涉及运算<select id="mistake-operation">${[
+    ["", "全部运算"],
+    ["+", "加法"],
+    ["-", "减法"],
+    ["*", "乘法"],
+    ["/", "除法"],
+  ]
+    .map(
+      ([value, label]) =>
+        `<option value="${value}" ${mistakeOperation === value ? "selected" : ""}>${label}</option>`,
+    )
+    .join(
+      "",
+    )}</select></label><button class="button outline small" type="submit">筛选</button><button class="text-link" id="mistake-filter-clear" type="button">重置</button></form><div class="mistakes-list">${
     filtered
       .slice(libraryPage * 20, libraryPage * 20 + 20)
       .map(
@@ -84,7 +139,7 @@ function mistakeView() {
           `<article class="mistake-row"><div><h3>${esc(q.expression)} = ?</h3><p>上次作答 ${esc(q.given)} · 答案 ${esc(q.answer)} · 累计答错 ${q.misses} 次</p><small>${q.mastered ? "已掌握" : "待巩固"} · ${esc(new Date(q.lastReviewed).toLocaleDateString("zh-CN"))}</small>${explanationView(q)}</div><button class="text-link" data-mistake-delete="${q.index}" ${busy ? "disabled" : ""} aria-label="移除错题：${esc(q.expression)}">移除</button></article>`,
       )
       .join("") ||
-    '<div class="feature-empty">答错的已作答题会自动收录在这里，未答题不会加入。</div>'
+    `<div class="feature-empty">${mistakes.length ? "没有匹配的错题，试试其他筛选条件。" : "答错的已作答题会自动收录在这里，未答题不会加入。"}</div>`
   }</div><div class="ws-pagination"><button id="mistakes-prev" ${libraryPage === 0 ? "disabled" : ""}>上一组</button><span>${filtered.length ? libraryPage + 1 : 0} / ${Math.ceil(filtered.length / 20)}</span><button id="mistakes-next" ${(libraryPage + 1) * 20 >= filtered.length ? "disabled" : ""}>下一组</button></div><p class="feature-footnote">自动保留最近 500 道错题；重练答对后标记为已掌握。数据保存在当前浏览器。</p><p id="mistakes-status" role="status"></p></section>`;
 }
 function explanationView(question) {
@@ -124,7 +179,7 @@ export function workshopView() {
     ]
       .map(([v, l]) => option(v, l, settings.division))
       .join("")}</select>`,
-  )}<details class="ws-print-settings"><summary>打印版式 <span>列数 / 行距</span></summary><div class="ws-fields">${field("每行题数", `<select name="columns">${[1, 2, 3].map((n) => option(n, `${n} 列`, settings.columns)).join("")}</select>`)}${field("题目行距 / px", `<input required type="number" min="12" max="100" name="spacing" value="${settings.spacing}">`)}</div></details><button class="ws-primary" type="submit" ${busy ? "disabled" : ""}>${busy ? "正在编排…" : "生成练习"} <span aria-hidden="true">↗</span></button><details class="ws-rules"><summary>出题规则</summary><p class="ws-hint">选择多种运算时，每道多步题至少包含两种运算。<br>题量最多 10,000；默认中间结果非负，答案不超过上限。</p></details><p id="ws-status" role="status" aria-live="polite"></p></form><section class="ws-history"><div class="ws-section-title"><span>02</span><h2>练习记录</h2>${history.length ? '<button id="ws-clear">清空</button>' : ""}</div>${
+  )}<details class="ws-print-settings"><summary>打印版式 <span>列数 / 行距</span></summary><div class="ws-fields">${field("每行题数", `<select name="columns">${[1, 2, 3].map((n) => option(n, `${n} 列`, settings.columns)).join("")}</select>`)}${field("题目行距 / px", `<input required type="number" min="12" max="100" name="spacing" value="${settings.spacing}">`)}</div></details><button class="ws-primary" type="submit" ${busy ? "disabled" : ""}>${busy ? "正在编排…" : "生成练习"} <span aria-hidden="true">↗</span></button><details class="ws-rules"><summary>出题规则</summary><p class="ws-hint">选择多种运算时，每道多步题至少包含两种运算。<br>题量最多 10,000；默认中间结果非负，答案不超过上限。</p></details><p id="ws-status" role="status" aria-live="polite"></p></form><section class="ws-history"><div class="ws-section-title"><span>02</span><h2>练习记录</h2></div>${
     history.length
       ? history
           .slice(0, 5)
@@ -134,7 +189,7 @@ export function workshopView() {
           )
           .join("")
       : '<p class="ws-hint">完成一份练习后，记录会留在这里。</p>'
-  }<p class="ws-hint">资料仅保存在当前浏览器。</p></section></aside><section class="ws-paper" id="ws-paper">${paper()}<p id="ws-paper-status" role="status"></p></section>${mistakeView()}</div><div class="ws-colophon"><span>规则先行，落笔有数。</span><p>去重以完整算式为准，交换顺序视为不同题。分数输入 1/2，余数输入 3余1。分数模式只对答案使用分数，题目操作数为整数。</p></div></div>`;
+  }<p class="ws-hint">资料仅保存在当前浏览器。</p></section></aside><section class="ws-paper" id="ws-paper">${paper()}<p id="ws-paper-status" role="status"></p></section>${mistakeView()}${historyView()}</div><div class="ws-colophon"><span>规则先行，落笔有数。</span><p>去重以完整算式为准，交换顺序视为不同题。分数输入 1/2，余数输入 3余1。分数模式只对答案使用分数，题目操作数为整数。</p></div></div>`;
 }
 function elapsed() {
   return session
@@ -146,19 +201,44 @@ function paper() {
     return `<div class="ws-paper-top"><span>EXERCISE BOOK</span><span>待编排 / —</span></div><div class="ws-empty"><div class="ws-equation">a <i>+</i> b <i>×</i> c</div><div class="ws-empty-rule"></div><span class="ws-overline">支持加减乘除与运算优先级</span><h2>生成一份混合运算练习</h2><p>选择运算种类与每题步数，再点击「生成练习」。<br>可以在线作答，也可以打印后落笔。<br><a class="button primary" href="#math">前往设置练习 →</a></p><div class="ws-empty-bottom"><span>01 设定规则</span><span>02 独立演算</span><span>03 校对答案</span></div></div>`;
   const grade = session.grade,
     start = page * PAGE_SIZE,
-    qs = session.questions.slice(start, start + PAGE_SIZE),
+    reviewQuestions = session.questions
+      .map((q, index) => ({ ...q, index }))
+      .filter(
+        (q) =>
+          !grade ||
+          reviewFilter === "all" ||
+          questionState(grade.rows[q.index]) === reviewFilter,
+      ),
+    qs = reviewQuestions.slice(start, start + PAGE_SIZE),
     answered = session.answers.filter((v) => String(v ?? "").trim()).length;
-  return `<div class="ws-paper-top"><span>${session.retry ? "CORRECTION / 错题重练" : "EXERCISE BOOK / 课堂练习"}</span><span>${new Date(session.started).toLocaleDateString("zh-CN")}</span></div><div class="ws-paper-heading"><div><h2>${session.retry ? "再解一次" : "四则运算练习"}</h2><p>${session.questions.length} 道题 · ${session.library ? "错题巩固" : `${session.settings.max} 以内 · ${session.settings.operatorCount} 个运算符`}</p></div><div class="ws-clock"><span>用时</span><b id="ws-clock">${elapsed()}</b><span>秒</span></div></div><div class="ws-toolbar"><span id="ws-progress">已作答 ${answered} / ${session.questions.length}</span><div><button type="button" id="ws-download">下载题目 ↓</button><button type="button" id="ws-print">打印 / PDF ↗</button></div></div>${grade ? `<div class="ws-result"><strong>${grade.score}<small>%</small></strong><div><b>答对 ${grade.correct} / ${grade.total}</b><p>未答 ${grade.unanswered} 题 · 用时 ${session.elapsed} 秒</p></div><button id="ws-retry" ${grade.correct === grade.total ? "disabled" : ""}>错题重练 ↗</button></div>` : ""}<form id="ws-answers"><div class="ws-questions">${qs
+  return `<div class="ws-paper-top"><span>${session.retry ? "CORRECTION / 错题重练" : "EXERCISE BOOK / 课堂练习"}</span><span>${new Date(session.started).toLocaleDateString("zh-CN")}</span></div><div class="ws-paper-heading"><div><h2>${session.retry ? "再解一次" : "四则运算练习"}</h2><p>${session.questions.length} 道题 · ${session.library ? "错题巩固" : `${session.settings.max} 以内 · ${session.settings.operatorCount} 个运算符`}</p></div><div class="ws-clock"><span>用时</span><b id="ws-clock">${elapsed()}</b><span>秒</span></div></div><div class="ws-toolbar"><span id="ws-progress">已作答 ${answered} / ${session.questions.length}</span><div><button type="button" id="ws-download">下载题目 ↓</button><button type="button" id="ws-print">打印 / PDF ↗</button></div></div><div class="practice-progress"><progress id="ws-progress-bar" max="${session.questions.length}" value="${answered}" aria-label="作答进度"></progress><span id="ws-save-state">${sessionSaveMessage}</span>${!grade ? `<button type="button" class="text-link" id="ws-next-unanswered">跳到未答题 →</button>` : ""}</div>${grade ? `<div class="ws-result"><strong>${grade.score}<small>%</small></strong><div><b>答对 ${grade.correct} / ${grade.total}</b><p>未答 ${grade.unanswered} 题 · 用时 ${session.elapsed} 秒</p></div><button id="ws-retry" ${grade.correct === grade.total ? "disabled" : ""}>错题重练 ↗</button></div>` : ""}${
+    grade
+      ? `<div class="review-toolbar"><div class="filter-group" role="group" aria-label="复盘筛选">${[
+          ["all", "全部", grade.total],
+          ["wrong", "答错", grade.total - grade.correct - grade.unanswered],
+          ["unanswered", "未答", grade.unanswered],
+          ["correct", "答对", grade.correct],
+        ]
+          .map(
+            ([value, label, count]) =>
+              `<button data-review-filter="${value}" aria-pressed="${reviewFilter === value}">${label} ${count}</button>`,
+          )
+          .join(
+            "",
+          )}</div><span>筛选仅影响复盘，下载仍包含整份练习。</span></div>`
+      : ""
+  }<form id="ws-answers"><div class="ws-questions">${qs
     .map((q, j) => {
-      const i = start + j,
+      const i = q.index,
         r = grade?.rows[i];
-      return `<div class="ws-question ${r ? (r.correct ? "is-correct" : "is-wrong") : ""}"><span class="ws-number">${String(i + 1).padStart(2, "0")}</span><label for="ws-a-${i}">${esc(q.expression)} =</label><input id="ws-a-${i}" data-ws-answer="${i}" aria-label="第 ${i + 1} 题答案" type="text" autocomplete="off" value="${esc(session.answers[i] ?? "")}" ${grade ? "readonly" : ""}>${r ? `<small>${r.correct ? "✓" : `答案 ${esc(q.answer)}`}</small>` : ""}</div>`;
+      return `<div class="ws-question ${r ? `is-${questionState(r)}` : ""}"><span class="ws-number">${String(i + 1).padStart(2, "0")}</span><label for="ws-a-${i}">${esc(q.expression)} =</label><input id="ws-a-${i}" data-ws-answer="${i}" aria-label="第 ${i + 1} 题答案" type="text" autocomplete="off" value="${esc(session.answers[i] ?? "")}" ${grade ? "readonly" : ""}>${r ? `<small>${r.correct ? "✓ 答对" : `${r.answered ? "答案" : "未作答 · 答案"} ${esc(q.answer)}`}</small>` : ""}</div>`;
     })
     .join(
       "",
-    )}</div><div class="ws-pagination"><button type="button" id="ws-prev" ${page === 0 ? "disabled" : ""}>← 上一页</button><span>第 ${page + 1} / ${Math.ceil(session.questions.length / PAGE_SIZE)} 页</span><button type="button" id="ws-next" ${start + PAGE_SIZE >= session.questions.length ? "disabled" : ""}>下一页 →</button></div><div class="ws-submit-row"><label><input id="ws-include" type="checkbox" ${session.include ? "checked" : ""}>下载 / 打印附答案</label>${grade ? "<span>本次练习已批改</span>" : '<button class="ws-primary" type="submit">交卷批改 <span>✓</span></button>'}</div></form>`;
+    )}</div><div class="ws-pagination"><button type="button" id="ws-prev" ${page === 0 ? "disabled" : ""}>← 上一页</button><span>${reviewQuestions.length ? `第 ${page + 1} / ${Math.ceil(reviewQuestions.length / PAGE_SIZE)} 页` : "没有符合条件的题目"}</span><button type="button" id="ws-next" ${start + PAGE_SIZE >= reviewQuestions.length ? "disabled" : ""}>下一页 →</button></div><div class="ws-submit-row"><label><input id="ws-include" type="checkbox" ${session.include ? "checked" : ""}>下载 / 打印附答案</label>${grade ? "<span>本次练习已批改</span>" : '<button class="ws-primary" type="submit">交卷批改 <span>✓</span></button>'}</div></form>`;
 }
 function redraw() {
+  persistSession();
   if (!$(".workshop")) return;
   $("#main").innerHTML = workshopView();
   bindWorkshop();
@@ -182,6 +262,20 @@ function status(text) {
   if ($("#ws-paper-status")) $("#ws-paper-status").textContent = text;
 }
 export function bindWorkshop() {
+  $("#mistake-filter-form").onsubmit = (event) => {
+    event.preventDefault();
+    mistakeQuery = $("#mistake-search").value;
+    mistakeOperation = $("#mistake-operation").value;
+    libraryPage = 0;
+    redraw();
+  };
+  $("#mistake-operation").onchange = () =>
+    $("#mistake-filter-form").requestSubmit();
+  $("#mistake-filter-clear").onclick = () => {
+    mistakeQuery = mistakeOperation = "";
+    libraryPage = 0;
+    redraw();
+  };
   $("#mistakes-mastered").onchange = (e) => {
     showMastered = e.target.checked;
     libraryPage = 0;
@@ -210,7 +304,7 @@ export function bindWorkshop() {
   );
   $("#mistakes-practice").onclick = () => {
     if (busy) return;
-    const questions = mistakeQuestions(mistakes, showMastered);
+    const questions = mistakeQuestions(matchingMistakes(), showMastered);
     if (!questions.length) return;
     session = {
       settings: { ...DEFAULT },
@@ -224,6 +318,7 @@ export function bindWorkshop() {
       library: true,
     };
     page = 0;
+    reviewFilter = "all";
     location.hash = "math/practice";
     redraw();
   };
@@ -263,6 +358,7 @@ export function bindWorkshop() {
         retry: false,
       };
       page = 0;
+      reviewFilter = "all";
       const saved = save("workshop-settings", settings);
       location.hash = "math/practice";
       redraw();
@@ -305,8 +401,46 @@ export function bindWorkshop() {
         session.answers[Number(input.dataset.wsAnswer)] = input.value;
         $("#ws-progress").textContent =
           `已作答 ${session.answers.filter((v) => String(v ?? "").trim()).length} / ${session.questions.length}`;
+        $("#ws-progress-bar").value = session.answers.filter((v) =>
+          String(v ?? "").trim(),
+        ).length;
+        $("#ws-save-state").textContent = "正在保存…";
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(persistSession, 350);
       }),
   );
+  document.querySelectorAll("[data-ws-answer]").forEach((input) => {
+    input.onkeydown = (event) => {
+      if (event.key !== "Enter" || session.grade) return;
+      event.preventDefault();
+      const next = Number(input.dataset.wsAnswer) + 1;
+      if (next >= session.questions.length)
+        $("#ws-answers [type=submit]").focus();
+      else {
+        if (Math.floor(next / PAGE_SIZE) !== page) {
+          page++;
+          redraw();
+        }
+        $(`[data-ws-answer="${next}"]`).focus();
+      }
+    };
+  });
+  $("#ws-next-unanswered")?.addEventListener("click", () => {
+    const index = session.questions.findIndex(
+      (q, i) => !String(session.answers[i] ?? "").trim(),
+    );
+    if (index < 0) return;
+    page = Math.floor(index / PAGE_SIZE);
+    redraw();
+    $(`[data-ws-answer="${index}"]`).focus();
+  });
+  document.querySelectorAll("[data-review-filter]").forEach((button) => {
+    button.onclick = () => {
+      reviewFilter = button.dataset.reviewFilter;
+      page = 0;
+      redraw();
+    };
+  });
   $("#ws-prev")?.addEventListener("click", () => {
     page--;
     redraw();
@@ -315,10 +449,10 @@ export function bindWorkshop() {
     page++;
     redraw();
   });
-  $("#ws-include")?.addEventListener(
-    "change",
-    (e) => (session.include = e.target.checked),
-  );
+  $("#ws-include")?.addEventListener("change", (e) => {
+    session.include = e.target.checked;
+    persistSession();
+  });
   $("#ws-answers")?.addEventListener("submit", (e) => {
     e.preventDefault();
     if (session.grade) return;
@@ -332,6 +466,8 @@ export function bindWorkshop() {
       date: new Date().toLocaleString("zh-CN"),
       total: session.questions.length,
       score: session.grade.score,
+      correct: session.grade.correct,
+      unanswered: session.grade.unanswered,
       elapsed: session.elapsed,
       retry: session.retry,
     });
@@ -354,6 +490,7 @@ export function bindWorkshop() {
       retry: true,
     };
     page = 0;
+    reviewFilter = "all";
     redraw();
   });
   $("#ws-download")?.addEventListener("click", () => {

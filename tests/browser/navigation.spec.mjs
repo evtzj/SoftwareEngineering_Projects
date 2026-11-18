@@ -19,7 +19,7 @@ test('任务首页、分步作答与返回设置保留答案', async ({ page }) 
   await page.getByRole('link', { name:'2. 在线作答', exact:true }).click();
   await expect(page.locator('[data-ws-answer="0"]')).toHaveValue('123');
   await page.getByRole('link', { name:'练习记录', exact:true }).click();
-  await expect(page.locator('.ws-history')).toBeVisible();
+  await expect(page.locator('.practice-history')).toBeVisible();
   await expect(page.locator('.ws-paper')).toBeHidden();
   await page.goBack();
   await expect(page.locator('[data-ws-answer="0"]')).toHaveValue('123');
