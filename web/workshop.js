@@ -158,7 +158,7 @@ function field(label, html) {
 }
 export function workshopView() {
   const route = location.hash.slice(1) || "math";
-  return `<div class="workshop"><div class="ws-masthead"><div><p class="ws-overline">为每一次进步</p><h1>四则混合运算</h1></div><div class="ws-date">多步计算 · 在线批改 · 打印练习<br><b>ARITHMETIC WORKSHOP</b></div></div><nav class="task-nav" aria-label="运算练习页面"><a href="#math" ${route === "math" ? 'aria-current="page"' : ""}>1. 设置练习</a><a href="#math/practice" ${route === "math/practice" ? 'aria-current="page"' : ""}>2. 在线作答</a><a href="#math/history" ${route === "math/history" ? 'aria-current="page"' : ""}>练习记录</a><a href="#math/mistakes" ${route === "math/mistakes" ? 'aria-current="page"' : ""}>错题本</a></nav><div class="ws-layout"><aside class="ws-sidebar"><div class="ws-section-title"><span>01</span><h2>编排练习</h2><button id="ws-reset" type="button">恢复默认</button></div><form id="ws-settings"><div class="ws-presets"><button type="button" data-preset="week">每周 300 题</button><button type="button" data-preset="quick">混合 20 题</button></div><div class="ws-fields">${field("题目数量", `<input required type="number" name="count" min="1" max="10000" value="${settings.count}">`)}${field("数字与答案上限", `<input required type="number" name="max" min="2" max="1000" value="${settings.max}">`)}</div><fieldset class="ws-ops"><legend>运算种类</legend>${[
+  return `<div class="workshop"><div class="ws-masthead"><div><p class="ws-overline">为每一次进步</p><h1>四则混合运算</h1></div><div class="ws-date">多步计算 · 在线批改 · 打印练习<br><b>ARITHMETIC WORKSHOP</b></div></div><nav class="task-nav" aria-label="运算练习页面"><a href="#math" ${route === "math" ? 'aria-current="page"' : ""}>1. 设置练习</a><a href="#math/practice" ${route === "math/practice" ? 'aria-current="page"' : ""}>2. 在线作答</a><a href="#math/history" ${route === "math/history" ? 'aria-current="page"' : ""}>练习记录</a><a href="#math/mistakes" ${route === "math/mistakes" ? 'aria-current="page"' : ""}>错题本</a></nav><div class="ws-layout"><aside class="ws-sidebar"><div class="ws-section-title"><span>01</span><h2>编排练习</h2><button id="ws-reset" type="button">恢复默认</button></div><form id="ws-settings"><div class="ws-presets"><button type="button" data-preset="week">每周 300 题</button><button type="button" data-preset="quick">混合 20 题</button><button type="button" data-preset="twoStep">两步四则</button><button type="button" data-preset="addSubtract">加减混合</button><p class="ws-hint">两步计算：三个数、两个运算符，例如 13 + 28 − 10 = ?</p></div><div class="ws-fields">${field("题目数量", `<input required type="number" name="count" min="1" max="10000" value="${settings.count}">`)}${field("数字与答案上限", `<input required type="number" name="max" min="2" max="1000" value="${settings.max}">`)}</div><fieldset class="ws-ops"><legend>运算种类</legend>${[
     ["+", "＋", "加"],
     ["-", "−", "减"],
     ["*", "×", "乘"],
@@ -383,9 +383,16 @@ export function bindWorkshop() {
         if (busy) return;
         settings = {
           ...DEFAULT,
-          ...(b.dataset.preset === "quick"
-            ? { count: 20, max: 20, operatorCount: 2 }
-            : {}),
+          ...{
+            quick: { count: 20, max: 20, operatorCount: 2 },
+            twoStep: { count: 20, max: 100, operatorCount: 2 },
+            addSubtract: {
+              count: 20,
+              max: 100,
+              operatorCount: 2,
+              operations: ["+", "-"],
+            },
+          }[b.dataset.preset],
         };
         redraw();
       }),

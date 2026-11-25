@@ -209,10 +209,16 @@ body {
 }
 .ws-presets {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 22px;
 }
+.ws-presets .ws-hint {
+  flex-basis: 100%;
+  margin: 4px 0 0;
+}
 .ws-presets button {
+  flex: 1 1 140px;
   border: 1px solid #bbb5ac;
   font-size: 11px;
   padding: 6px 9px;
